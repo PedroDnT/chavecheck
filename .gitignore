@@ -15,20 +15,33 @@ build/
 dist/
 .vercel/
 
-# Testes e TypeScript
+# Testes, relatórios locais e TypeScript
 coverage/
+output/
 *.tsbuildinfo
 next-env.d.ts
 
-# Variáveis de ambiente e chaves locais
+# Configuração local, credenciais e certificados
 .env*
 !.env.example
+.npmrc
+.yarnrc
+.netrc
+.aws/
+.ssh/
+.auth/
+playwright/.auth/
+secrets/
+credentials*.json
+service-account*.json
+certificates/
 *.pem
 *.key
+*.p12
+*.pfx
 
 # Logs e arquivos locais
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+*.log
 .DS_Store
+
+.data/

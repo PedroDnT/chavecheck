@@ -1,0 +1,191 @@
+{
+  "type": "json_schema",
+  "name": "requisitos_vistoria",
+  "strict": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "etapa": {
+        "type": "string",
+        "enum": [
+          "extracao_contrato"
+        ]
+      },
+      "documento": {
+        "type": "object",
+        "properties": {
+          "referencia": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ficticio": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "referencia",
+          "ficticio"
+        ],
+        "additionalProperties": false
+      },
+      "ambientes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "nome": {
+              "type": "string"
+            },
+            "tipo": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "itens": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "nome": {
+                    "type": "string"
+                  },
+                  "caracteristicas": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "nome": {
+                          "type": "string"
+                        },
+                        "valor": {
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "null"
+                          ],
+                          "description": "Característica declarada no contrato; null se ausente."
+                        },
+                        "unidade": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "aproximado": {
+                          "type": "boolean"
+                        },
+                        "localizacao": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "referencia_contrato": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "nome",
+                        "valor",
+                        "unidade",
+                        "aproximado",
+                        "localizacao",
+                        "referencia_contrato"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "requisitos_a_verificar": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "descricao": {
+                          "type": "string"
+                        },
+                        "meios_verificacao": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "foto",
+                              "medicao",
+                              "teste_funcional",
+                              "documento"
+                            ]
+                          }
+                        },
+                        "referencia_contrato": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "descricao",
+                        "meios_verificacao",
+                        "referencia_contrato"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "informacoes_faltantes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "nome",
+                  "caracteristicas",
+                  "requisitos_a_verificar",
+                  "informacoes_faltantes"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "id",
+            "nome",
+            "tipo",
+            "itens"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "limitacoes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "etapa",
+      "documento",
+      "ambientes",
+      "limitacoes"
+    ],
+    "additionalProperties": false
+  }
+}

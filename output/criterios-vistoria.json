@@ -1,0 +1,207 @@
+{
+  "versao": "0.1",
+  "natureza": "Protótipo de extração estruturada, sem validação presencial ou parecer jurídico",
+  "fonte": {
+    "arquivo": "Vistoria _BELA_CINTRA_2302_AP_85.pdf",
+    "tipo": "Termo de vistoria de entrada",
+    "identificacao": "BELA CINTRA 2302 AP 85",
+    "data_termo": "2026-10-06",
+    "paginas_pdf": 19,
+    "ambientes": [
+      "Sala",
+      "Cozinha",
+      "Área de serviço",
+      "Quarto de serviço",
+      "Lavabo",
+      "Quarto",
+      "Banheiro"
+    ]
+  },
+  "metodologia": "As dez categorias são propostas para o checklist; não constituem uma lista de dez critérios enumerada no documento. Registros abaixo derivam do texto. Fotografias não foram auditadas integralmente. Nenhuma condição atual foi verificada.",
+  "criterios": [
+    {
+      "id": "C01",
+      "criterio": "Pintura de paredes e tetos",
+      "origem_categoria": "proposta",
+      "paginas_fonte": [
+        2,
+        6,
+        8,
+        10,
+        11,
+        14
+      ],
+      "registro_no_laudo": "Sala com leves marcas; área de serviço com marcas na parte inferior da parede; quarto com marca escura pontual; banheiro com manchas no teto.",
+      "verificacao_proposta": "Comparar marcas, manchas, descascamentos e sinais aparentes de umidade por ambiente. Não atribuir causa às manchas sem inspeção.",
+      "status_verificacao": "pendente",
+      "resultado": null,
+      "observacao_usuario": "",
+      "evidencias_usuario": []
+    },
+    {
+      "id": "C02",
+      "criterio": "Pisos, rodapés e revestimentos",
+      "origem_categoria": "proposta",
+      "paginas_fonte": [
+        2,
+        4,
+        6,
+        8,
+        10,
+        11,
+        14
+      ],
+      "registro_no_laudo": "Tacos da sala e quarto em bom estado; rodapé do quarto de serviço com riscos e marcas; piso do banheiro com desgaste próximo ao vaso.",
+      "verificacao_proposta": "Fotografar riscos, peças quebradas, rejuntes e rodapés; comparar com os danos já descritos.",
+      "status_verificacao": "pendente",
+      "resultado": null,
+      "observacao_usuario": "",
+      "evidencias_usuario": []
+    },
+    {
+      "id": "C03",
+      "criterio": "Portas, batentes e fechaduras",
+      "origem_categoria": "proposta",
+      "paginas_fonte": [
+        2,
+        10,
+        11,
+        14
+      ],
+      "registro_no_laudo": "Sala com fechadura eletrônica; quarto com desgaste e lascas nos batentes e desgaste na maçaneta; porta do banheiro com fissuras.",
+      "verificacao_proposta": "Testar abertura, fechamento e travamento; registrar fissuras, folgas, lascas e chaves recebidas. Quantidade de chaves não informada.",
+      "status_verificacao": "pendente",
+      "resultado": null,
+      "observacao_usuario": "",
+      "evidencias_usuario": []
+    },
+    {
+      "id": "C04",
+      "criterio": "Janelas, vidros e persianas",
+      "origem_categoria": "proposta",
+      "paginas_fonte": [
+        2,
+        6,
+        11,
+        14
+      ],
+      "registro_no_laudo": "Sala com sujeira nos trilhos; quarto com desgaste na pintura da esquadria e manchas no vidro; janela do banheiro descrita em bom estado.",
+      "verificacao_proposta": "Testar folhas, trincos, venezianas e persianas; registrar vidros, trilhos e vedação. Vedação não comprovada no texto.",
+      "status_verificacao": "pendente",
+      "resultado": null,
+      "observacao_usuario": "",
+      "evidencias_usuario": []
+    },
+    {
+      "id": "C05",
+      "criterio": "Elétrica e iluminação",
+      "origem_categoria": "proposta",
+      "paginas_fonte": [
+        2,
+        4,
+        6,
+        8,
+        10,
+        11,
+        14
+      ],
+      "registro_no_laudo": "Iluminação dos sete ambientes descrita em funcionamento; tomadas e interruptores mencionados em parte dos ambientes.",
+      "verificacao_proposta": "Acionar luminárias e interruptores; verificar tomadas com procedimento seguro. Funcionamento das tomadas não comprovado no texto.",
+      "status_verificacao": "pendente",
+      "resultado": null,
+      "observacao_usuario": "",
+      "evidencias_usuario": []
+    },
+    {
+      "id": "C06",
+      "criterio": "Hidráulica, louças e escoamento",
+      "origem_categoria": "proposta",
+      "paginas_fonte": [
+        4,
+        6,
+        10,
+        14
+      ],
+      "registro_no_laudo": "Torneiras da cozinha, área de serviço, lavabo e banheiro descritas em funcionamento; chuveiro do banheiro também. Há vasos e ralos descritos.",
+      "verificacao_proposta": "Testar vazão, descargas e escoamento; observar vazamentos. Estanqueidade e descargas não comprovadas no texto.",
+      "status_verificacao": "pendente",
+      "resultado": null,
+      "observacao_usuario": "",
+      "evidencias_usuario": []
+    },
+    {
+      "id": "C07",
+      "criterio": "Armários, bancadas e mobiliário",
+      "origem_categoria": "proposta",
+      "paginas_fonte": [
+        2,
+        4,
+        6,
+        8,
+        11,
+        14
+      ],
+      "registro_no_laudo": "Gabinete da cozinha com leves marcas; armário do quarto em bom estado; rack descrito como “Hack” com marcas leves de desgaste; demais móveis inventariados.",
+      "verificacao_proposta": "Conferir presença e estado de móveis, dobradiças, portas, gavetas, puxadores e bancadas.",
+      "status_verificacao": "pendente",
+      "resultado": null,
+      "observacao_usuario": "",
+      "evidencias_usuario": []
+    },
+    {
+      "id": "C08",
+      "criterio": "Eletrodomésticos",
+      "origem_categoria": "proposta",
+      "paginas_fonte": [
+        4,
+        6,
+        11
+      ],
+      "registro_no_laudo": "Micro-ondas e fogão Electrolux, máquina de lavar Samsung e TV mencionados; funcionamento desses itens não declarado expressamente.",
+      "verificacao_proposta": "Conferir presença, modelo, acessórios e funcionamento de cada aparelho. Teste de gás deve seguir procedimento seguro.",
+      "status_verificacao": "pendente",
+      "resultado": null,
+      "observacao_usuario": "",
+      "evidencias_usuario": []
+    },
+    {
+      "id": "C09",
+      "criterio": "Ar-condicionado",
+      "origem_categoria": "proposta",
+      "paginas_fonte": [
+        11,
+        17
+      ],
+      "registro_no_laudo": "Split do quarto descrito em funcionamento; texto prevê revisão e limpeza a cada 12 meses se entregue funcionando.",
+      "verificacao_proposta": "Testar refrigeração, controle, ruído e drenagem; solicitar data e comprovante da manutenção. Última revisão não informada.",
+      "status_verificacao": "pendente",
+      "resultado": null,
+      "observacao_usuario": "",
+      "evidencias_usuario": []
+    },
+    {
+      "id": "C10",
+      "criterio": "Limpeza e conservação superficial",
+      "origem_categoria": "proposta",
+      "paginas_fonte": [
+        1,
+        2,
+        11
+      ],
+      "registro_no_laudo": "Documento define limpo, poeira superficial e sujo; registra sujeira nos trilhos da sala e manchas no vidro do quarto.",
+      "verificacao_proposta": "Inspecionar superfícies, trilhos, vidros, rejuntes e louças; registrar por ambiente. Não há classificação global explícita de limpeza.",
+      "status_verificacao": "pendente",
+      "resultado": null,
+      "observacao_usuario": "",
+      "evidencias_usuario": []
+    }
+  ],
+  "regras_documentais": {
+    "prazo_contestacao_texto": "5 dias úteis após a posse",
+    "pagina": 2,
+    "data_posse": null,
+    "data_limite": null,
+    "canal": "Texto menciona QR Code e também emails: confirmar com a imobiliária.",
+    "observacao": "Regras relatadas como conteúdo do documento, sem avaliar validade jurídica."
+  }
+}

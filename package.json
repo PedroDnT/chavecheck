@@ -1,0 +1,14 @@
+{
+  "name": "chavecheck",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "extract": "node --env-file-if-exists=.env --env-file-if-exists=.env.local src/cli.js",
+    "test": "node --test",
+    "schema": "node src/export-schema.js"
+  }
+}

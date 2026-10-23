@@ -1,5 +1,37 @@
 # Validação da prova de conceito
 
+## Cenário rápido: parede e canaleta — 23/10/2026
+
+O atalho **Testar parede e canaleta** abre diretamente duas verificações: acabamento de cimento queimado e tampa/fios aparentes da canaleta. O exemplo anterior de quatro itens é arquivado antes da substituição. Fotos, análises e revisões do exemplo anterior continuam preservadas.
+
+A comparação atual usa `gpt-6-luna` com esforço `none` e saída mais curta. Os inventários anteriores mantêm `medium`, são preparados em segundo plano e reutilizados do cache. A foto original continua salva; somente a cópia enviada pode ser reduzida. A sessão `gpt-live-1` permanece disponível durante a análise, sem silenciar áudio ou microfone. O resultado resumido segue em fragmentos com confirmações em paralelo.
+
+Controles desta alteração:
+
+- 160 testes automatizados passaram; TypeScript e compilação de produção aprovados. Incluem referências em paralelo, reutilização do cache, uma única chamada ao modelo na comparação com referências prontas, entrega de todos os fragmentos e ocultação de resultado antigo enquanto uma nova foto está em análise ou falhou.
+- Comparação real com GPT-6 Luna: HTTP 200 em **6,702 segundos**, usando câmera sintética e referências já preparadas. A imagem sintética corretamente não aprovou o acabamento; retornou inconclusivo. Esse tempo é uma medição isolada da requisição, não um prazo garantido nem uma medição em celular/rede móvel.
+- Durante uma segunda análise com resposta simulada e atraso controlado de 25 segundos, uma pergunta digitada recebeu resposta da voz real antes do fim da espera: a assistente informou que a canaleta viria depois da parede e que a foto ainda estava em análise. O canal permaneceu aberto, sem erro da API.
+- O percurso com resultados simulados confirmou parede → canaleta → verificação concluída → relatório com dois itens. Ao abrir o relatório, o serviço confirmou `session.closed` e o canal fechou. O diagnóstico do Next.js não encontrou erros de configuração ou execução.
+- Migração verificada em armazenamento isolado: o cenário conhecido de quatro itens e três fotos foi preservado em `previous`; o cenário atual abriu com dois itens pendentes e nenhuma foto atual reaproveitada indevidamente.
+
+Os testes com imagem sintética e resultado simulado verificam integração e continuidade; não medem precisão na detecção de defeitos. O teste presencial pelo ngrok continua necessário para conferir o aparelho, a rede e a qualidade das fotos.
+
+## Verificação guiada por fotos manuais — 23/10/2026
+
+A tela passou a oferecer um único início: habilitar câmera e começar a voz. A câmera mostra somente uma prévia local; não existe mais envio periódico de quadros. A conversa orienta cada captura e o avanço depende da revisão humana. Requisitos, referências, comparação detalhada e evidências permanecem acessíveis em seções recolhidas.
+
+Validação desta alteração:
+
+- 152 testes automatizados aprovados; TypeScript e compilação de produção aprovados.
+- No navegador Chromium, um clique ativou a câmera sintética e conectou a sessão real `gpt-live-1`, que apresentou a assistente e pediu o enquadramento do item ativo. Nenhuma chamada de análise de foto ocorreu antes do toque de captura.
+- Negar a câmera não iniciou o microfone e manteve o botão disponível para tentar novamente.
+- O percurso com resultados visuais simulados cobriu: foto insuficiente sem confirmação, nova captura, falha de rede com foto preservada, reenvio do mesmo identificador, confirmação e troca de item, divergência confirmada, revisão manual inconclusiva e conclusão do último item.
+- Uma nova foto de item revisado reabriu a revisão, mantendo o histórico. A conclusão exibiu dois conformes, uma divergência e um inconclusivo, sem converter esses resultados em aprovação geral.
+- A voz real anunciou o encerramento e orientou a abertura do relatório. O serviço confirmou `session.closed` e o canal WebRTC fechou sem erro de API.
+- A conversa atualiza apenas sua área de rolagem, preservando o enquadramento no celular. A câmera e a conversa permanecem na mesma página. Telas de 320, 390, 820 e 1280 px foram verificadas sem transbordamento; o botão inicial permaneceu dentro da prévia. Auditoria axe-core WCAG 2 A/AA da tela inicial: zero violações e zero verificações incompletas.
+
+As respostas de comparação usadas no percurso acima foram simuladas exclusivamente para testar a interface; não medem precisão visual. Câmera e microfone de entrada também foram sintéticos. Permissões, reprodução de som e câmera em aparelho físico, especialmente Safari/iOS pelo ngrok, ainda precisam de conferência presencial. O app oferece reativação explícita do som se o navegador bloquear a reprodução automática.
+
 ## GPT-6 Luna nas análises e no texto — 23/10/2026
 
 A configuração ativa passou a usar `gpt-6-luna` no inventário das fotos de referência, na comparação visual, no chat, na extração textual do roteiro e no backend de ferramentas da voz. `gpt-live-1` continua responsável pelo áudio. Defaults, `.env.example` e os overrides locais foram atualizados. Não havia GPT-5.5 ativo.

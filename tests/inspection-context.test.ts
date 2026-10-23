@@ -112,3 +112,31 @@ test("large escaped narratives, ten checks and many photos stay below the API co
   assert.equal(inspection.items[9].source,escaped);
   assert.equal(inspection.evidence.length,1_000);
 });
+
+test("conversation during a new photo cannot repeat an earlier result as current",()=>{
+  const inspection=createDemo();
+  const item=inspection.items[0];
+  const previous=analysisFor(item);
+  inspection.analyses=[previous];
+  item.suggestion={status:previous.result.status,note:previous.result.summary,analysisId:previous.id};
+  const busy=JSON.parse(inspectionContext(inspection,item.id,item.id));
+  assert.equal(busy.analysisInProgress.itemId,item.id);
+  assert.equal(busy.analysisInProgress.state,"processing");
+  assert.deepEqual(busy.latestAnalyses,[]);
+  assert.equal(busy.items[0].suggestion,undefined);
+  assert.equal(inspection.analyses.length,1);
+  const done=JSON.parse(inspectionContext(inspection,item.id));
+  assert.equal(done.analysisInProgress,null);
+  assert.equal(done.latestAnalyses[0].id,previous.id);
+});
+
+test("a failed new capture cannot reactivate the old visual conclusion in conversation",()=>{
+  const inspection=createDemo();const item=inspection.items[0];
+  inspection.analyses=[analysisFor(item)];
+  inspection.evidence=[{id:"new-failed-photo",itemId:item.id,dataUrl:"data:image/jpeg;base64,YQ==",createdAt:"2026-10-23T13:00:00Z",name:"Nova foto",origin:"camera",analysisState:"error",analysisError:"Rede indisponível"}];
+  const context=JSON.parse(inspectionContext(inspection,item.id));
+  assert.deepEqual(context.latestAnalyses,[]);
+  assert.equal(context.items[0].latestCaptureState,"error");
+  assert.equal(context.items[0].latestCaptureError,"Rede indisponível");
+  assert.equal(inspection.analyses.length,1);
+});

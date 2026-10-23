@@ -2,12 +2,12 @@
 
 import {useCallback,useEffect,useRef,useState,type Dispatch,type SetStateAction} from "react";
 import type {Evidence,Inspection} from "@/lib/inspection";
-import {analysisMatchesCurrentItem,applyVisualAnalysis,selectSupportingEvidence} from "@/lib/analysis-state";
+import {analysisMatchesCurrentItem,applyVisualAnalysis,registerCapturedEvidence,selectSupportingEvidence} from "@/lib/analysis-state";
 import {imageDigest,prepareAnalysisImage} from "@/lib/image-capture";
 import {referenceIdSchema,visualAnalysisSchema,type VisualAnalysis} from "@/lib/visual-analysis";
 import {saveInspection} from "@/lib/storage";
 
-type Options={inspection:Inspection|null;setInspection:Dispatch<SetStateAction<Inspection|null>>;onBegin:()=>void;onFinish:(completed:boolean)=>void;onResult:(analysis:VisualAnalysis)=>void;onError:(message:string)=>void};
+type Options={inspection:Inspection|null;setInspection:Dispatch<SetStateAction<Inspection|null>>;onBegin:(itemId:string)=>void;onFinish:(completed:boolean)=>void;onResult:(analysis:VisualAnalysis)=>void;onError:(message:string)=>void};
 type Operation={controller:AbortController;inspectionId:string;evidenceId?:string};
 type Progress={stage:"idle"|"preparing"|"analyzing";itemId:string;evidenceId?:string};
 
@@ -31,7 +31,7 @@ export function useVisualInspection(options:Options){
     if(!start||!item)return;
     const run:Operation={controller:new AbortController(),inspectionId:start.id,evidenceId:retry?.id};
     let completed=false;
-    operation.current=run;latest.current.onBegin();setProgress({stage:"preparing",itemId});
+    operation.current=run;latest.current.onBegin(itemId);setProgress({stage:"preparing",itemId});
     const current=()=>{
       if(operation.current!==run||latest.current.inspection?.id!==start.id)return false;
       if(run.controller.signal.aborted)throw new Error("Análise interrompida por tempo limite.");
@@ -52,7 +52,7 @@ export function useVisualInspection(options:Options){
         referenceIds:(start.referencePhotos??[]).filter(p=>p.itemIds.includes(itemId)).map(p=>referenceIdSchema.parse(p.id)),requestReason:reason,previousEvidenceIds:previousPhotos.map(photo=>photo.id)};
       run.evidenceId=evidence.id;
       const snapshot=latest.current.inspection!;
-      const saved={...snapshot,evidence:retry?snapshot.evidence.map(e=>e.id===evidence.id?evidence:e):[...snapshot.evidence,evidence]};
+      const saved=registerCapturedEvidence(snapshot,evidence);
       latest.current.setInspection(saved);
       // Preserve the actual capture before issuing a verdict that depends on it.
       await saveInspection(saved);

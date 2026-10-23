@@ -24,7 +24,7 @@ export function WorkflowHeader({step, onHome, onRooms, onReport, showSteps = tru
     <div className="wf-brandbar">
       {onHome
         ? <button type="button" className="wf-brand" onClick={onHome} aria-label="ChaveCheck, início">{brand}</button>
-        : <div className="wf-brand" aria-label="ChaveCheck">{brand}</div>}
+        : <div className="wf-brand" role="img" aria-label="ChaveCheck">{brand}</div>}
     </div>
     {showSteps && <nav className="wf-navigation" aria-label="Etapas da vistoria">
       <ol className="wf-steps">
@@ -48,16 +48,17 @@ type DocumentUploadProps = {
   busy: boolean;
   error: string | null;
   onResume?: () => void;
+  onQuickStart?: () => void;
 };
 
-export function DocumentUpload({onFile, busy, error, onResume}: DocumentUploadProps) {
+export function DocumentUpload({onFile, busy, error, onResume, onQuickStart}: DocumentUploadProps) {
   const input = useRef<HTMLInputElement>(null);
   const errorId = useId();
 
   return <section className="wf-onboarding wf-upload" aria-labelledby="wf-upload-title" aria-busy={busy}>
     <div className="wf-upload-content">
       <h1 id="wf-upload-title">Sua vistoria começa aqui.</h1>
-      <p className="wf-introduction">Envie o PDF da vistoria anterior para mapear os cômodos e o que precisa ser conferido.</p>
+      <p className="wf-introduction">Teste duas verificações: acabamento da parede e estado da canaleta. As fotos de referência já estão preparadas.</p>
       <div className="wf-upload-art" aria-hidden="true"><FileText size={91} strokeWidth={1.15} /></div>
       <input
         ref={input}
@@ -74,7 +75,8 @@ export function DocumentUpload({onFile, busy, error, onResume}: DocumentUploadPr
           if (file) onFile(file);
         }}
       />
-      <button className="wf-upload-button" type="button" onClick={() => input.current?.click()} disabled={busy} aria-describedby={error ? errorId : undefined}>
+      {onQuickStart&&<button className="wf-upload-button" type="button" onClick={onQuickStart} disabled={busy}><ScanLine size={21}/>Testar parede e canaleta<ArrowRight size={18}/></button>}
+      <button className="wf-resume-button" type="button" onClick={() => input.current?.click()} disabled={busy} aria-describedby={error ? errorId : undefined}>
         {busy ? <LoaderCircle className="wf-loading-icon" size={21} aria-hidden="true" /> : <Upload size={21} aria-hidden="true" />}
         {busy ? "Abrindo documento…" : "Enviar PDF da vistoria"}
       </button>

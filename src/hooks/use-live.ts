@@ -5,12 +5,14 @@ import {createConversationItemId, isRecord, parseToolCall, updateTranscript, typ
 import {createReferenceConversationItems, serializeRealtimeEvent} from "./use-realtime";
 import {LiveResponseTracker} from "@/lib/live-response-tracker";
 import {liveGreeting as greeting} from "@/lib/live-policy";
-import {LiveTranscriptBuffer, LiveAcknowledgements, createLiveAnalysisAppendChunks} from "@/lib/live-events";
+import {LiveTranscriptBuffer, LiveAcknowledgements, createLiveVoiceSummaryChunks, deliverLiveVoiceSummary} from "@/lib/live-events";
+import {prepareLiveAudio,type PreparedLiveAudio} from "@/lib/live-audio";
 
 type Status = "idle" | "connecting" | "connected" | "closing" | "error";
 type Options = {context:string; referenceImages?:{id:string;dataUrl:string;label:string}[];onToolCall:(name:string,args:Record<string,unknown>)=>unknown|Promise<unknown>};
 type Backend = {revision:number;calls:Record<string,unknown>[]};
-const stopped="Interrompa a orientação anterior. Uma captura está sendo analisada ou o roteiro mudou. Aguarde a atualização do aplicativo antes de relatar qualquer conclusão. Não use um resultado antigo para o novo item.";
+const capturePending="Uma nova foto foi recebida e está em análise. Qualquer resultado anterior não vale para esta captura. Continue ouvindo e conversando normalmente; responda dúvidas de procedimento. Não anuncie conclusão nem peça outra foto até receber o resultado registrado.";
+const playbackBlockedError="O navegador bloqueou o áudio. Toque em Habilitar som para ouvir a assistente.";
 
 function abortable<T>(promise:Promise<T>,signal:AbortSignal):Promise<T>{
   return new Promise((resolve,reject)=>{const cancel=()=>reject(signal.reason??new DOMException("Cancelado","AbortError"));if(signal.aborted)return cancel();signal.addEventListener("abort",cancel,{once:true});promise.then(resolve,reject).finally(()=>signal.removeEventListener("abort",cancel));});
@@ -34,13 +36,15 @@ export function useLive(options:Options){
   const [status,setStatus]=useState<Status>("idle");const statusRef=useRef<Status>("idle");
   const [error,setError]=useState<string|null>(null);const [messages,setMessages]=useState<RealtimeMessage[]>([]);
   const [isSpeaking,setIsSpeaking]=useState(false);const [micEnabled,setMicEnabled]=useState(true);
+  const [audioBlocked,setAudioBlocked]=useState(false);
   const peer=useRef<RTCPeerConnection|null>(null);const channel=useRef<RTCDataChannel|null>(null);
   const microphone=useRef<MediaStream|null>(null);const audio=useRef<HTMLAudioElement|null>(null);
   const audioContext=useRef<AudioContext|null>(null);const meter=useRef<ReturnType<typeof setInterval>|null>(null);
+  const preparedAudio=useRef<PreparedLiveAudio|null>(null);const stopAudioPriming=useRef<(()=>void)|null>(null);
   const controller=useRef<AbortController|null>(null);const deadline=useRef<ReturnType<typeof setTimeout>|null>(null);
   const closeTimer=useRef<ReturnType<typeof setTimeout>|null>(null);const disconnected=useRef<ReturnType<typeof setTimeout>|null>(null);
   const generation=useRef(0);const revision=useRef(0);const pending=useRef(false);const outputBlocked=useRef(false);
-  const lastSound=useRef(0);const meterReady=useRef(false);const acknowledgements=useRef(new LiveAcknowledgements());
+  const lastSound=useRef(0);const acknowledgements=useRef(new LiveAcknowledgements());
   const transcripts=useRef(new LiveTranscriptBuffer());const typed=useRef<(RealtimeMessage&{createdAt:string})[]>([]);
   const pendingMode=useRef<"capture"|"announcement"|"selection"|null>(null);const progressTarget=useRef<{itemId:string;condition:string}|null>(null);
   const delegationResponses=useRef(new Map<string,string>());const toolQueueCount=useRef(0);
@@ -54,19 +58,38 @@ export function useLive(options:Options){
     try{channel.current.send(serializeRealtimeEvent(event,peer.current?.sctp?.maxMessageSize));return true;}catch(e){setError(message(e));return false;}
   },[]);
   const blockOutput=useCallback((value:boolean)=>{outputBlocked.current=value;if(audio.current)audio.current.muted=value;if(value)setIsSpeaking(false);},[]);
+  const cancelPreparedAudio=useCallback(()=>{
+    const prepared=preparedAudio.current;preparedAudio.current=null;if(!prepared)return;
+    prepared.stopPriming();prepared.player.pause();prepared.player.srcObject=null;void prepared.context.close().catch(()=>undefined);
+  },[]);
+  const resumeAudio=useCallback(()=>{
+    const player=audio.current;const context=audioContext.current;if(!player||!context)return;
+    const ownGeneration=generation.current;
+    void Promise.all([context.resume(),player.play()]).then(()=>{
+      if(generation.current!==ownGeneration)return;
+      setAudioBlocked(false);setError(previous=>previous===playbackBlockedError?null:previous);
+    }).catch(()=>{if(generation.current===ownGeneration){setAudioBlocked(true);setError(playbackBlockedError);}});
+  },[]);
+  const prepareAudio=useCallback(()=>{
+    if(audioContext.current){resumeAudio();return;}
+    if(preparedAudio.current)return;
+    try{preparedAudio.current=prepareLiveAudio();}catch{/* start reports unsupported audio together with the connection error. */}
+  },[resumeAudio]);
   const release=useCallback(()=>{
     generation.current++;revision.current++;controller.current?.abort();controller.current=null;
     for(const timer of [deadline.current,closeTimer.current,disconnected.current])if(timer)clearTimeout(timer);
     deadline.current=null;closeTimer.current=null;disconnected.current=null;
-    if(meter.current)clearInterval(meter.current);meter.current=null;meterReady.current=false;
+    if(meter.current)clearInterval(meter.current);meter.current=null;
+    cancelPreparedAudio();stopAudioPriming.current?.();stopAudioPriming.current=null;
     void audioContext.current?.close().catch(()=>undefined);audioContext.current=null;
     const events=channel.current;channel.current=null;events?.close();
     microphone.current?.getTracks().forEach(track=>track.stop());microphone.current=null;
     const connection=peer.current;peer.current=null;connection?.close();
     if(audio.current){audio.current.pause();audio.current.srcObject=null;audio.current=null;}
+    setAudioBlocked(false);
     acknowledgements.current.clear();backend.current.clear();delegationResponses.current.clear();responseTracker.current.clear();toolQueueCount.current=0;handled.current.clear();
     backendTail.current=Promise.resolve();continuation.current=false;processing.current=false;pending.current=false;outputBlocked.current=false;commandFailed.current=false;pendingMode.current=null;progressTarget.current=null;
-  },[]);
+  },[cancelPreparedAudio]);
   const stop=useCallback(()=>{
     if(statusRef.current==="closing")return;
     if(statusRef.current!=="connected"){release();setState("idle");setIsSpeaking(false);setMicEnabled(true);return;}
@@ -79,7 +102,7 @@ export function useLive(options:Options){
 
   const append=useCallback(async(type:"thinking"|"commentary"|"instructions",content:string)=>{
     if(new TextEncoder().encode(content).length>500){setError("A atualização de voz excedeu o limite. Consulte o resultado na tela.");return false;}
-    const id=createConversationItemId();const accepted=acknowledgements.current.wait(id,`session.${type}.appended`,45_000);
+    const id=createConversationItemId();const accepted=acknowledgements.current.wait(id,`session.${type}.appended`,12_000);
     if(!send({type:`session.${type}.append`,event_id:id,delegation_id:null,content}))acknowledgements.current.settle(id,false);
     return accepted;
   },[send]);
@@ -90,50 +113,46 @@ export function useLive(options:Options){
     const id=createConversationItemId();if(!responseTracker.current.issued(id,revision.current))return;
     if(!send({type:"response.create",event_id:id})){responseTracker.current.failed(id);commandFailed.current=true;}
   },[send]);
+  // A visual job invalidates earlier decisions, but must never pause the conversation.
   const pauseForCapture=useCallback(()=>{
-    revision.current++;pending.current=true;pendingMode.current="capture";continuation.current=false;acknowledgements.current.clear();blockOutput(true);
-    if(statusRef.current==="connected")void append("instructions",stopped);
-  },[append,blockOutput]);
-  const waitForSilence=useCallback(async(expectedGeneration:number,expectedRevision:number)=>{
-    const until=Date.now()+12_000;
-    while(Date.now()<until){
-      if(generation.current!==expectedGeneration||revision.current!==expectedRevision||statusRef.current!=="connected")return false;
-      if(meterReady.current&&audioContext.current?.state==="running"&&performance.now()-lastSound.current>650&&backend.current.size===0&&responseTracker.current.pendingCount===0&&!processing.current)return true;
-      await new Promise(resolve=>setTimeout(resolve,100));
-    }
-    return false;
-  },[]);
-  const setAnalysisPending=useCallback((value:boolean)=>{
-    pending.current=value;pendingMode.current=value?"capture":null;if(value){blockOutput(true);return;}
+    revision.current++;pending.current=false;pendingMode.current="capture";acknowledgements.current.clear();
     if(statusRef.current!=="connected")return;
-    const ownGeneration=generation.current,ownRevision=revision.current;
-    void(async()=>{
-      await append("instructions","A tentativa de análise terminou sem uma nova conclusão. Não anuncie resultado nem aprovação. Aguarde a pessoa ou conduza o reenvio da foto preservada.");
-      if(await waitForSilence(ownGeneration,ownRevision)){blockOutput(false);flushBackend();}
-    })();
-  },[append,blockOutput,waitForSilence,flushBackend]);
+    queueItem({type:"message",role:"user",content:[{type:"input_text",text:`ESTADO DO APLICATIVO: analysisInProgress=true. ${capturePending}`} ]});
+    void append("instructions",capturePending);
+    void append("commentary","Recebi a foto e vou conferir. Pode continuar falando comigo enquanto a análise fica pronta.");
+    flushBackend();
+  },[append,queueItem,flushBackend]);
+  const setAnalysisPending=useCallback((value:boolean)=>{
+    if(value){pauseForCapture();return;}
+    const wasCapture=pendingMode.current==="capture";
+    if(wasCapture)pendingMode.current=null;
+    if(statusRef.current!=="connected"||!wasCapture)return;
+    queueItem({type:"message",role:"user",content:[{type:"input_text",text:"ESTADO DO APLICATIVO: analysisInProgress=false. A tentativa terminou sem novo resultado. A foto foi preservada; não use a análise antiga como resultado desta captura."}]});
+    void append("instructions","A tentativa de análise terminou sem nova conclusão. Continue a conversa e ajude a reenviar a foto preservada. Não anuncie resultado ou aprovação desta tentativa.");
+    flushBackend();
+  },[append,queueItem,pauseForCapture,flushBackend]);
   const announceAnalysis=useCallback(async(text:string,kind:"analysis"|"progress"="analysis")=>{
     if(statusRef.current!=="connected"){pending.current=false;return false;}
-    if(kind==="progress")pauseForCapture();
+    if(kind==="progress"){revision.current++;acknowledgements.current.clear();}
     const ownGeneration=generation.current,ownRevision=revision.current;
-    pending.current=true;pendingMode.current="announcement";blockOutput(true);
+    pendingMode.current="announcement";
     try{
-      const parsed=JSON.parse(text);progressTarget.current=kind==="progress"?{itemId:String(parsed.nextItemId??""),condition:String(parsed.nextExpected??"")}:null;
-      const chunks=createLiveAnalysisAppendChunks(text,kind);
-      for(const chunk of chunks){
-        if(generation.current!==ownGeneration||revision.current!==ownRevision)return false;
-        if(!await append("thinking",chunk))throw new Error("A voz não confirmou o resultado. A análise continua disponível na tela.");
-      }
-      // Also update the delegated backend, which does not share frontend appends.
-      if(!queueItem({type:"message",role:"user",content:[{type:"input_text",text:`DADOS DO APLICATIVO: ${kind}. Use este registro mais recente; não invente uma nova análise.\n${text}`}]}))throw new Error("Não foi possível atualizar a conversa com o registro.");
-      if(!await waitForSilence(ownGeneration,ownRevision))throw new Error("O áudio anterior ainda não foi interrompido. Consulte a análise na tela e reinicie a voz.");
-      pending.current=false;pendingMode.current=null;progressTarget.current=null;blockOutput(false);flushBackend();
-      const delivered=await append("commentary",kind==="progress"?"A revisão na interface terminou. Oriente agora o próximo item conforme a atualização do roteiro que acabou de receber; não atribua uma análise ao novo item.":"A nova comparação está registrada. Relate a conclusão e a próxima ação dos dados recebidos, com o limite específico indicado. A confirmação do item continua pendente de revisão humana.");
+      const parsed=JSON.parse(text);const complete=kind==="progress"&&parsed.verificationComplete===true;
+      progressTarget.current=kind==="progress"&&!complete?{itemId:String(parsed.nextItemId??""),condition:String(parsed.nextExpected??"")}:null;
+      const chunks=createLiveVoiceSummaryChunks(text,kind);
+      // Full application record belongs in Responses. Only decisive facts go to Live.
+      if(!queueItem({type:"message",role:"user",content:[{type:"input_text",text:`DADOS DO APLICATIVO: ${kind}. analysisInProgress=false. Use este registro mais recente; não invente uma nova análise.\n${text}`}]}))throw new Error("Não foi possível atualizar a conversa com o registro.");
+      // Ordered transport preserves chunk order; ACKs can arrive together in one round trip.
+      const accepted=await deliverLiveVoiceSummary(chunks,chunk=>append("thinking",chunk),()=>generation.current===ownGeneration&&revision.current===ownRevision);
+      if(generation.current!==ownGeneration||revision.current!==ownRevision)return false;
+      if(!accepted)throw new Error("A análise foi salva, mas a voz não confirmou o recebimento. Consulte o resultado na tela.");
+      const delivered=await append("commentary",complete?"Todos os itens foram revisados. Anuncie que a verificação terminou e oriente Concluir e ver relatório. Preserve divergências e inconclusivos; não anuncie aprovação geral.":kind==="progress"?"A revisão terminou. Oriente o próximo item informado, sem atribuir a ele o resultado anterior.":"A comparação acabou de ficar pronta. Dê o resultado registrado em uma frase e a próxima ação. Preserve as pendências. A confirmação continua na interface; não repita a análise inteira.");
       if(generation.current!==ownGeneration||revision.current!==ownRevision)return false;
       if(!delivered)throw new Error("A análise foi salva, mas a voz não confirmou o recebimento. Consulte o resultado na tela.");
       setError(null);return true;
-    }catch(e){if(generation.current===ownGeneration&&revision.current===ownRevision){pending.current=false;pendingMode.current=null;progressTarget.current=null;setError(message(e));}return false;}
-  },[append,queueItem,pauseForCapture,waitForSilence,blockOutput,flushBackend]);
+    }catch(e){if(generation.current===ownGeneration&&revision.current===ownRevision)setError(message(e));return false;}
+    finally{if(generation.current===ownGeneration&&revision.current===ownRevision){pendingMode.current=null;progressTarget.current=null;flushBackend();}}
+  },[append,queueItem,flushBackend]);
 
   const updateContext=useCallback((next:string)=>{
     if(contextSent.current===next||statusRef.current!=="connected")return;
@@ -142,25 +161,20 @@ export function useLive(options:Options){
     if(currentSelection(previous)!==currentSelection(next)){
       // The expected destination of Confirmar e continuar belongs to that announcement.
       if(pendingMode.current==="announcement"&&progressMatches(next,progressTarget.current))return;
-      if(pendingMode.current==="capture"){
-        revision.current++;acknowledgements.current.clear();void append("instructions",stopped);return;
-      }
-      pauseForCapture();pendingMode.current="selection";const ownGeneration=generation.current,ownRevision=revision.current;
-      void(async()=>{
-        const failSelection=()=>{if(generation.current===ownGeneration&&revision.current===ownRevision){pending.current=false;pendingMode.current=null;setError("Não foi possível atualizar a orientação de voz. Reinicie a conversa para continuar no item selecionado.");}};
-        if(!await waitForSilence(ownGeneration,ownRevision)){failSelection();return;}
-        if(!await append("thinking","O item ativo do roteiro mudou na interface. Consulte o backend antes de orientar. Não atribua ao novo item a conclusão do anterior.")){failSelection();return;}
+      revision.current++;acknowledgements.current.clear();pendingMode.current="selection";
+      const ownGeneration=generation.current,ownRevision=revision.current;
+      void append("instructions","O item ativo mudou. Abandone a orientação anterior, mantenha a conversa e consulte o backend antes de orientar o novo item. Não use a conclusão do item anterior.").then(accepted=>{
         if(generation.current!==ownGeneration||revision.current!==ownRevision)return;
-        pending.current=false;pendingMode.current=null;blockOutput(false);
+        pendingMode.current=null;
+        if(!accepted)setError("A voz não confirmou a mudança de item. Consulte a orientação na tela.");
         queueItem({type:"message",role:"user",content:[{type:"input_text",text:"O item ativo foi alterado na interface. Consulte get_inspection_context e oriente somente a próxima ação do item atualmente selecionado. Não conclua um item sem análise registrada."}]});
         continuation.current=true;flushBackend();
-      })();
+      });
     }
-  },[queueItem,append,pauseForCapture,waitForSilence,blockOutput,flushBackend]);
+  },[queueItem,append,flushBackend]);
   useEffect(()=>{updateContext(options.context);},[options.context,updateContext]);
   const sendText=useCallback((value:string)=>{
     const text=value.trim();if(!text)return false;
-    if(pending.current){setError("Aguarde a atualização da orientação e envie novamente. Sua mensagem continua no campo.");return false;}
     if(statusRef.current!=="connected"){setError("Inicie a conversa antes de enviar uma mensagem.");return false;}
     if(text.length>8_000){setError("Envie uma mensagem mais curta.");return false;}
     if(queueItem({type:"message",role:"user",content:[{type:"input_text",text}]})){
@@ -179,13 +193,16 @@ export function useLive(options:Options){
     const tracks=microphone.current?.getAudioTracks();if(!tracks?.length)return;
     const enabled=!tracks[0].enabled;tracks.forEach(track=>{track.enabled=enabled;});setMicEnabled(enabled);
     send({type:enabled?"session.input_audio.unmute":"session.input_audio.mute",event_id:createConversationItemId()});
-    void audioContext.current?.resume();void audio.current?.play().catch(()=>setError("Permita a reprodução de som neste site."));
-  },[send]);
+    resumeAudio();
+  },[send,resumeAudio]);
   const clearMessages=useCallback(()=>{transcripts.current.reset();typed.current=[];setMessages([]);},[]);
 
   const start=useCallback(async()=>{
     if(["connecting","connected","closing"].includes(statusRef.current))return;
+    // release closes an older session, while preserving audio unlocked by the camera gesture.
+    const prepared=preparedAudio.current;preparedAudio.current=null;
     release();const ownGeneration=generation.current;const current=()=>generation.current===ownGeneration;
+    if(prepared){audio.current=prepared.player;audioContext.current=prepared.context;stopAudioPriming.current=prepared.stopPriming;}
     const abort=new AbortController();controller.current=abort;setState("connecting");setError(null);setMicEnabled(true);setIsSpeaking(false);clearMessages();
     const fail=(detail:string)=>{if(!current())return;release();setState("error");setIsSpeaking(false);setError(detail);};
     deadline.current=setTimeout(()=>abort.abort(new Error("A conexão demorou demais. Verifique a rede e tente novamente.")),45_000);
@@ -193,13 +210,15 @@ export function useLive(options:Options){
       const references=createReferenceConversationItems(latest.current.referenceImages??[]);
       if(!navigator.mediaDevices?.getUserMedia)throw new Error("Use HTTPS ou localhost e um navegador com acesso ao microfone.");
       const connection=new RTCPeerConnection();peer.current=connection;
-      const player=new Audio();player.autoplay=true;player.setAttribute("playsinline","true");audio.current=player;
-      const meterContext=new AudioContext();audioContext.current=meterContext;void meterContext.resume();
+      const output=prepared??prepareLiveAudio();
+      const player=output.player;audio.current=player;stopAudioPriming.current=output.stopPriming;
+      const meterContext=output.context;audioContext.current=meterContext;void meterContext.resume().catch(()=>undefined);
       connection.ontrack=event=>{
         if(!current())return;const stream=event.streams[0]??new MediaStream([event.track]);player.srcObject=stream;
-        void player.play().catch(()=>setError("O áudio foi bloqueado. Toque no microfone para habilitar o som."));
+        stopAudioPriming.current?.();stopAudioPriming.current=null;
+        resumeAudio();
         const analyser=meterContext.createAnalyser();analyser.fftSize=512;meterContext.createMediaStreamSource(stream).connect(analyser);
-        const samples=new Float32Array(analyser.fftSize);lastSound.current=performance.now();meterReady.current=true;
+        const samples=new Float32Array(analyser.fftSize);lastSound.current=performance.now();
         meter.current=setInterval(()=>{analyser.getFloatTimeDomainData(samples);const rms=Math.sqrt(samples.reduce((sum,n)=>sum+n*n,0)/samples.length);if(rms>0.008)lastSound.current=performance.now();setIsSpeaking(!outputBlocked.current&&meterContext.state==="running"&&performance.now()-lastSound.current<250);},100);
       };
       connection.onconnectionstatechange=()=>{
@@ -295,7 +314,7 @@ export function useLive(options:Options){
       continuation.current=true;flushBackend();
       void append("commentary",greeting);
     }catch(e){if(current())fail(message(e));}
-  },[release,setState,clearMessages,queueItem,append,flushBackend]);
+  },[release,setState,clearMessages,queueItem,append,flushBackend,resumeAudio]);
 
-  return {status,error,messages,isSpeaking,micEnabled,start,stop,toggleMic,sendText,sendImage,updateContext,pauseForCapture,announceAnalysis,setAnalysisPending,clearMessages};
+  return {status,error,messages,isSpeaking,micEnabled,audioBlocked,resumeAudio,prepareAudio,cancelPreparedAudio,start,stop,toggleMic,sendText,sendImage,updateContext,pauseForCapture,announceAnalysis,setAnalysisPending,clearMessages};
 }

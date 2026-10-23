@@ -9,19 +9,20 @@ export function useCamera() {
   const [error,setError]=useState<string|null>(null);
   const [facing,setFacing]=useState<"environment"|"user">("environment");
   const stop=useCallback(()=>{generation.current++;streamRef.current?.getTracks().forEach(t=>t.stop());streamRef.current=null;setActive(false);setLoading(false);if(videoRef.current)videoRef.current.srcObject=null;},[]);
-  const start=useCallback(async(direction:"environment"|"user"=facing)=>{
+  const start=useCallback(async(direction:"environment"|"user"=facing):Promise<boolean>=>{
     stop();const current=++generation.current;setLoading(true);setError(null);
     try {
       if(!navigator.mediaDevices?.getUserMedia) throw new Error("Abra em localhost ou HTTPS para usar a câmera.");
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:direction},width:{ideal:1920},height:{ideal:1080}},audio:false});
-      if(generation.current!==current){stream.getTracks().forEach(t=>t.stop());return;}
+      if(generation.current!==current){stream.getTracks().forEach(t=>t.stop());return false;}
       streamRef.current=stream;setActive(true);setFacing(direction);
       stream.getVideoTracks()[0].addEventListener("ended",()=>{if(generation.current===current){setActive(false);setError("A câmera foi desconectada. Ative-a novamente.");}});
       if(videoRef.current){videoRef.current.srcObject=stream;await videoRef.current.play();}
+      return generation.current===current;
     }catch(e){if(generation.current===current){
       const message=e instanceof DOMException&&e.name==="NotAllowedError"?"Permita o acesso à câmera no navegador. Você também pode anexar uma foto.":e instanceof DOMException&&e.name==="NotFoundError"?"Nenhuma câmera encontrada. Você pode anexar uma foto.":e instanceof Error?e.message:"Não foi possível abrir a câmera.";
       stop();setError(message);
-    }}
+    }return false;}
     finally{if(generation.current===current)setLoading(false);}
   },[facing,stop]);
   const attach=useCallback((node:HTMLVideoElement|null)=>{videoRef.current=node;if(node&&streamRef.current){node.srcObject=streamRef.current;void node.play().catch(()=>{});}},[]);

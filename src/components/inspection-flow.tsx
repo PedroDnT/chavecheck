@@ -10,6 +10,7 @@ import {createMappedInspection, downloadInspectionPdf, getWorkflow, storeInspect
 import {DocumentScanner, DocumentUpload, WorkflowHeader} from "./document-onboarding";
 import {InspectionRooms, ReportSummary} from "./inspection-rooms";
 import {Report} from "./report";
+import {createRoomScenario,LEGACY_ROOM_SCENARIO_ID,ROOM_SCENARIO_ID} from "@/lib/room-scenario";
 import "./inspection-flow.css";
 
 const InspectionApp = dynamic(() => import("./inspection-app").then(module => module.InspectionApp), {
@@ -33,12 +34,22 @@ export function InspectionFlow() {
   const importInProgress = useRef(false);
   const alive = useRef(true);
   const latest = useRef(inspection);
+  const initialLoad = useRef<Promise<Inspection|null>|null>(null);
   latest.current = inspection;
 
   useEffect(() => {
     alive.current = true;
     let active = true;
-    loadInspection().then(saved => {
+    initialLoad.current??=(async()=>{
+      const saved=await loadInspection();
+      if(saved?.scenarioId!==LEGACY_ROOM_SCENARIO_ID)return saved;
+      await archiveInspection(saved);
+      const document=getWorkflow(saved).document;
+      const simple=updateWorkflow(createRoomScenario(),{document:document?{...document,fixtureId:ROOM_SCENARIO_ID}:undefined,startedRooms:[]});
+      await saveInspection(simple);
+      return simple;
+    })();
+    initialLoad.current.then(saved => {
       if (!active) return;
       if (saved) {
         const restored = restoreInterruptedAnalyses(saved);
@@ -112,10 +123,30 @@ export function InspectionFlow() {
 
   const onInspectionChange = useCallback((next: Inspection) => {setInspection(next);}, []);
 
+  async function startQuickScenario(){
+    if(importInProgress.current)return;
+    importInProgress.current=true;setBusy(true);setError(null);
+    try{
+      if(latest.current)await archiveInspection(latest.current);
+      const scenario=createRoomScenario();
+      const next=updateWorkflow(scenario,{startedRooms:["Sala"],activeItemId:scenario.items[0].id});
+      await saveInspection(next);
+      if(!alive.current)return;
+      setInspection(next);setActiveItemId(next.items[0].id);setView("inspect");
+    }catch{setError("Não foi possível abrir o teste rápido. Sua vistoria anterior foi preservada.");}
+    finally{importInProgress.current=false;setBusy(false);}
+  }
+
   const leaveInspection = useCallback((next: Inspection) => {
     setInspection(restoreInterruptedAnalyses(next));
     setView("rooms");
     void saveInspection(restoreInterruptedAnalyses(next)).catch(() => setError("Não foi possível salvar a sessão. Mantenha esta aba aberta e tente novamente."));
+  }, []);
+
+  const completeInspection = useCallback((next: Inspection) => {
+    setInspection(next);
+    setView("report");
+    void saveInspection(next).catch(() => setError("Não foi possível salvar a sessão. Mantenha esta aba aberta e tente novamente."));
   }, []);
 
   async function startRoom(room: string, itemId: string) {
@@ -178,10 +209,10 @@ export function InspectionFlow() {
       onReport={inspection && view !== "scanner" && view !== "inspect" && !busy ? () => {setError(null); setView("report");} : undefined}/>
     {!ready ? <main className="wf-flow-loading" role="status"><LoaderCircle className="spin" size={24}/>Carregando sua vistoria…</main> : <>
       {view !== "upload" && error && <div className="wf-flow-error" role="alert"><p>{error}</p><button className="icon-button" onClick={() => setError(null)} aria-label="Fechar aviso"><X size={18}/></button></div>}
-      {view === "upload" && <main><DocumentUpload onFile={file => void importPdf(file)} busy={busy} error={error} onResume={inspection ? () => {setError(null); setView("rooms");} : undefined}/></main>}
+      {view === "upload" && <main><DocumentUpload onQuickStart={()=>void startQuickScenario()} onFile={file => void importPdf(file)} busy={busy} error={error} onResume={inspection ? () => {setError(null); setView("rooms");} : undefined}/></main>}
       {view === "scanner" && pending && <main><DocumentScanner fileName={getWorkflow(pending).document?.name ?? "vistoria.pdf"} elapsedMs={elapsedMs} durationMs={DOCUMENT_SCAN_DURATION_MS}/></main>}
       {view === "rooms" && inspection && <main aria-busy={busy}><InspectionRooms inspection={inspection} busy={busy} onStartRoom={(room, id) => void startRoom(room, id)} onDocument={workflow?.document ? () => void showDocument() : undefined} onReport={() => setView("report")} onNew={() => {setError(null); setView("upload");}}/></main>}
-      {view === "inspect" && inspection && <InspectionApp key={inspection.id} initialInspection={inspection} initialItemId={activeItemId} onInspectionChange={onInspectionChange} onExit={leaveInspection}/>}
+      {view === "inspect" && inspection && <InspectionApp key={inspection.id} initialInspection={inspection} initialItemId={activeItemId} onInspectionChange={onInspectionChange} onExit={leaveInspection} onComplete={completeInspection}/>}
       {view === "report" && inspection && <main className="wf-report-page">
         <button className="wf-report-back cc-no-print" onClick={() => setView("rooms")}><ArrowLeft size={17}/>Cômodos / Relatório</button>
         <ReportSummary inspection={inspection} onFinalize={requestFinalization} onResume={resumePending} busy={busy}/>

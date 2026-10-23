@@ -250,10 +250,10 @@ test("inventory and current decisions preserve hash provenance and exact supplie
   assert.equal(result.evidenceId, input.evidenceId);
   assert.equal(result.itemId, input.item.id);
   assert.equal(calls.length, 2);
-  for (const call of calls) {
+  for (const [index, call] of calls.entries()) {
     assert.equal(call.store, false);
     assert.equal(call.reasoning, undefined, "Custom model families must not receive unsupported reasoning options");
-    assert.equal(call.max_output_tokens, 6_500);
+    assert.equal(call.max_output_tokens, index === 0 ? 6_500 : 3_200);
     const format = (call.text as { format: { strict: boolean; type: string; schema: { additionalProperties: boolean } } }).format;
     assert.equal(format.strict, true);
     assert.equal(format.type, "json_schema");
@@ -300,7 +300,7 @@ test("current and previous captures are sent separately and each finding retains
   assert.match(String(calls[1].instructions), /não peça novamente um trecho/);
 });
 
-test("visual analysis defaults to the dedicated model and uses medium reasoning only for its supported family", async (t) => {
+test("visual analysis uses fast Luna comparisons while keeping cached inventories at medium effort", async (t) => {
   const savedVision = process.env.OPENAI_VISION_MODEL;
   const savedText = process.env.OPENAI_TEXT_MODEL;
   delete process.env.OPENAI_VISION_MODEL;
@@ -321,13 +321,48 @@ test("visual analysis defaults to the dedicated model and uses medium reasoning 
     assert.equal(result.model, expectedModel);
     assert.equal(result.references[0].model, expectedModel);
     assert.equal(calls.length, 2);
-    for (const call of calls) {
+    for (const [index, call] of calls.entries()) {
       assert.equal(call.model, expectedModel);
-      assert.equal(call.max_output_tokens, 6_500);
-      if (expectedModel === "gpt-6-luna" || expectedModel === "gpt-5.4-mini") assert.deepEqual(call.reasoning, { effort: "medium" });
+      assert.equal(call.max_output_tokens, index === 0 ? 6_500 : 3_200);
+      if (expectedModel === "gpt-6-luna") assert.deepEqual(call.reasoning, { effort: index === 0 ? "medium" : "none" });
+      else if (expectedModel === "gpt-5.4-mini") assert.deepEqual(call.reasoning, { effort: "medium" });
       else assert.equal(call.reasoning, undefined);
     }
   }
+});
+
+test("reference warmup runs both inventories concurrently and leaves one model request per current photo", async () => {
+  const pending: Array<() => void> = [];
+  const names: string[] = [];
+  const service = createVisualAnalysisService({
+    cacheDir: null, model: () => "gpt-6-luna", readAsset: async id => Buffer.from(id),
+    provider: async body => {
+      const name = (body.text as { format: { name: string } }).format.name;
+      names.push(name);
+      if (name === "reference_inventory") {
+        await new Promise<void>(resolve => pending.push(resolve));
+        return inventory;
+      }
+      assert.deepEqual(body.reasoning, { effort: "none" });
+      assert.match(String(body.instructions), /um a três achados decisivos/);
+      const messages = body.input as Array<{ content: Array<{ type: string; detail?: string }> }>;
+      assert.ok(messages.every(message => message.content.filter(part => part.type === "input_image").every(image => image.detail === "high")), "Latency improvements preserve the image detail needed for surface defects");
+      return cleanResult();
+    },
+  });
+  const warmed = service.references(["foto-001", "foto-002"]);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(pending.length, 2, "Both reference requests start before either has completed");
+  const sharedWarmup = service.references(["foto-001", "foto-002"]);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(pending.length, 2, "Concurrent screen warmup shares existing inventory work");
+  pending.forEach(resolve => resolve());
+  await Promise.all([warmed, sharedWarmup]);
+  const decision = await service.analyze({ ...input, references: ["foto-001", "foto-002"] });
+  assert.equal(decision.result.status, "conforme");
+  assert.deepEqual(names, ["reference_inventory", "reference_inventory", "visual_comparison"]);
+  await service.analyze({ ...input, evidenceId: "capture-2", references: ["foto-001", "foto-002"] });
+  assert.deepEqual(names, ["reference_inventory", "reference_inventory", "visual_comparison", "visual_comparison"]);
 });
 
 test("visual inventory and comparison allow more processing time without changing the shared request default", async (t) => {

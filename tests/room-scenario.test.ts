@@ -1,13 +1,14 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {compareItem, inspectionContext} from "../src/lib/inspection";
-import {createRoomScenario, ROOM_INPUT, ROOM_SCENARIO_ID} from "../src/lib/room-scenario";
+import {createRoomScenario, LEGACY_ROOM_SCENARIO_ID, ROOM_INPUT, ROOM_SCENARIO_ID} from "../src/lib/room-scenario";
 
-test("room scenario starts with four unverified checks and no current observations", () => {
+test("simple room scenario starts with only wall and trunking checks and no current observations", () => {
   const inspection = createRoomScenario();
   assert.equal(inspection.scenarioId, ROOM_SCENARIO_ID);
   assert.equal(inspection.originalInput, ROOM_INPUT);
-  assert.deepEqual(inspection.items.map(item => item.id), ["sala-paredes", "sala-canaleta", "sala-ar", "sala-mobiliario"]);
+  assert.notEqual(inspection.scenarioId, LEGACY_ROOM_SCENARIO_ID);
+  assert.deepEqual(inspection.items.map(item => item.id), ["sala-paredes", "sala-canaleta"]);
   assert.ok(inspection.items.every(item => item.room === "Sala" && item.status === "pendente" && item.note === "" && !item.suggestion && !item.reviewedAt));
   assert.deepEqual(inspection.history, []);
   assert.deepEqual(inspection.messages, []);

@@ -217,3 +217,20 @@ test("fresh inspection explicitly tells Live there is no recorded analysis", () 
   assert.match(liveGreeting, /Aguarde o resultado do backend/);
   assert.doesNotMatch(liveGreeting, /Se já houver análise/);
 });
+
+
+test("connecting during photo analysis does not surface the previous result as the new capture", () => {
+  for (const analysisInProgress of [true, { itemId: "wall", state: "processing" }]) {
+    const compact = compactLiveStartupContext(JSON.stringify({
+      activeItemId: "wall", analysisInProgress,
+      items: [{ id: "wall", title: "Parede", status: "pendente" }],
+      latestAnalyses: [{ itemId: "wall", result: { status: "conforme", summary: "Resultado da captura antiga", needsPhoto: false } }],
+    }));
+    const facts = JSON.parse(JSON.parse(compact.slice(compact.indexOf("\n") + 1)));
+    assert.equal(facts.analysisInProgress, true);
+    assert.equal(facts.hasRecordedAnalysis, false);
+    assert.equal(facts.items[0].hasRecordedAnalysis, false);
+    assert.equal(facts.recordedAnalysis, null);
+    assert.doesNotMatch(compact, /Resultado da captura antiga/);
+  }
+});

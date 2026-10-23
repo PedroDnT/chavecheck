@@ -32,13 +32,13 @@ export async function prepareAnalysisImage(dataUrl:string):Promise<{analysisData
     // Pixel statistics describe this capture, not physical lux or calibrated color.
     const captureMetrics={width:bitmap.width,height:bitmap.height,meanLuminance:Math.round(sum/luminances.length),darkFraction:dark/luminances.length,brightFraction:bright/luminances.length,detailVariance:n?Math.max(0,detail/n-(detailSum/n)**2):0};
     let analysisDataUrl=dataUrl;
-    if(blob.size>3_000_000||Math.max(bitmap.width,bitmap.height)>1600){
+    if(blob.size>1_000_000||Math.max(bitmap.width,bitmap.height)>1600){
       for(const edge of [1600,1280,960]){
         const ratio=Math.min(1,edge/Math.max(bitmap.width,bitmap.height));
         canvas.width=Math.round(bitmap.width*ratio);canvas.height=Math.round(bitmap.height*ratio);
         context.drawImage(bitmap,0,0,canvas.width,canvas.height);
-        analysisDataUrl=canvas.toDataURL("image/jpeg",.88);
-        if(analysisDataUrl.length<=4_000_000)break;
+        analysisDataUrl=canvas.toDataURL("image/jpeg",.82);
+        if(analysisDataUrl.length<=1_350_000)break;
       }
     }
     if(analysisDataUrl.length>4_000_000)throw new Error("A foto é grande demais para análise. Capture uma nova imagem.");

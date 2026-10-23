@@ -107,10 +107,13 @@ export function compactVisualAnalysis(analysis:VisualAnalysis,detail:"focus"|"br
   return record;
 }
 
-export function inspectionContext(inspection:Inspection,activeId:string) {
+export function inspectionContext(inspection:Inspection,activeId:string,analysisInProgressItemId?:string) {
   const active=inspection.items.find(item=>item.id===activeId);
   const selected=inspection.items.length<=10?inspection.items:[...(active?[active]:[]),...inspection.items.filter(item=>item.id!==activeId).slice(0,active?9:10)];
   const latest=selected.flatMap(item=>{
+    if(item.id===analysisInProgressItemId)return [];
+    const latestCapture=inspection.evidence.filter(photo=>photo.itemId===item.id).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)).at(-1);
+    if(latestCapture?.analysisState==="pending"||latestCapture?.analysisState==="error")return [];
     const analysis=(inspection.analyses??[]).filter(entry=>entry.itemId===item.id&&entry.requirement.condition===item.expected.condition&&entry.requirement.source===item.source&&(()=>{const captured=inspection.evidence.find(photo=>photo.id===entry.evidenceId)?.analysisItem;return !captured||(captured.title===item.title&&captured.room===item.room);})()).at(-1);
     return analysis?[analysis]:[];
   });
@@ -119,6 +122,7 @@ export function inspectionContext(inspection:Inspection,activeId:string) {
     const analyses=onlyActiveAnalysis?latest.filter(analysis=>analysis.itemId===activeId):latest;
     return {
       property:clip(inspection.property,240),inspectionDate:inspection.date,fictitious:inspection.demo,activeItemId:activeId,
+      analysisInProgress:analysisInProgressItemId?{itemId:analysisInProgressItemId,state:"processing",instruction:"A foto atual está sendo comparada. Continue conversando, sem antecipar conclusão nem repetir pedido de foto."}:null,
       referencePhotos:inspection.referencePhotos?.slice(0,2).map(({id,label,description,itemIds})=>({id,label:clip(label,200),description:clip(description,500),itemIds,role:"referencia_anterior_nao_evidencia_atual"})),
       comparisonRules:inspection.referencePhotos?.length?"Use as análises registradas da captura atual, as REFERÊNCIAS anteriores e a condição esperada declarada pelo usuário. Cimento queimado é acabamento intencional. Bom estado é uma condição esperada, não uma certificação das fotos. Não aprove o estado atual com base na referência. Canaleta parcialmente visível exige aproximação. Funcionamento elétrico e refrigeração dependem de confirmação humana.":undefined,
       contextScope:{omittedItems:inspection.items.length-selected.length,omittedAnalyses:latest.length-analyses.length,note:"Contexto resumido da vistoria. Fontes e observações podem conter trechos abreviados. Não use omissões como prova de ausência de avaria. Registros completos preservados no relatório."},
@@ -130,8 +134,10 @@ export function inspectionContext(inspection:Inspection,activeId:string) {
           id:item.id,room:clip(item.room,100),title:clip(item.title,240),
           expected:{...item.expected,condition:clip(item.expected.condition,focused?1_800:400)},delivered:item.delivered,
           source:clip(item.source,focused?1_800:400),status:item.status,note:clip(item.note,focused?600:180),reviewedAt:item.reviewedAt,
-          suggestion:item.suggestion?{...item.suggestion,note:clip(item.suggestion.note,focused?500:160)}:undefined,
+          suggestion:item.suggestion&&item.id!==analysisInProgressItemId?{...item.suggestion,note:clip(item.suggestion.note,focused?500:160)}:undefined,
           differences:compareItem(item,inspection.date),evidenceCount:evidence.length,
+          latestCaptureState:evidence.at(-1)?.analysisState,
+          latestCaptureError:evidence.at(-1)?.analysisError,
           evidence:evidence.slice(focused?-3:-1).map(({id,name,createdAt})=>({id,name:clip(name,180),createdAt})),
         };
       }),

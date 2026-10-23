@@ -72,7 +72,7 @@ test("all reviewed outcomes complete a room, including divergence and inconclusi
   const inspection = createRoomScenario();
   inspection.items.forEach((item, index) => {item.status = index % 2 ? "inconclusivo" : "divergencia";});
   const [room] = getRoomProgress(inspection);
-  assert.equal(room.reviewed, 4);
+  assert.equal(room.reviewed, 2);
   assert.equal(room.status, "reviewed");
   assert.equal(room.action, "Revisar");
   assert.equal(room.firstItemId, inspection.items[0].id);
@@ -97,7 +97,7 @@ test("mock PDF mapping preserves fixture provenance and keeps the original PDF m
   assert.equal(mapped.demo, true);
   assert.equal(mapped.scenarioId, ROOM_SCENARIO_ID);
   assert.equal(mapped.originalInput, ROOM_INPUT);
-  assert.equal(mapped.items.length, 4);
+  assert.equal(mapped.items.length, 2);
   assert.deepEqual(mapped.history, []);
   assert.deepEqual(mapped.evidence, []);
   assert.deepEqual(getWorkflow(mapped).document, document);

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { analysisMatchesCurrentItem, applyVisualAnalysis, restoreInterruptedAnalyses, selectSupportingEvidence } from "../src/lib/analysis-state";
+import { analysisMatchesCurrentItem, applyVisualAnalysis, registerCapturedEvidence, restoreInterruptedAnalyses, selectSupportingEvidence } from "../src/lib/analysis-state";
+import { getGuidedProgress } from "../src/lib/guided-verification";
 import { inspectionContext, type Evidence, type Inspection } from "../src/lib/inspection";
 import { createRoomScenario } from "../src/lib/room-scenario";
 import type { ReferenceAnalysis, VisualAnalysis } from "../src/lib/visual-analysis";
@@ -41,9 +42,9 @@ function fixture() {
 
 test("a delayed result remains bound to its capture when a different checklist item is active", () => {
   const { inspection, analysis, item } = fixture();
-  const activeId = inspection.items[2].id;
+  const activeId = inspection.items[1].id;
   // Navigation and list ordering may change while the request is in flight.
-  inspection.items = [inspection.items[2], inspection.items[1], item, inspection.items[3]];
+  inspection.items = [inspection.items[1], item];
   const result = applyVisualAnalysis(inspection, analysis);
   const context = JSON.parse(inspectionContext(result, activeId));
   assert.equal(context.activeItemId, activeId);
@@ -207,4 +208,81 @@ test("a cumulative result cannot lose or cross-link its supporting photos", () =
   supporting.itemId=evidence.itemId;
   analysis.result.findings[0].evidenceId="unknown-photo";
   assert.strictEqual(applyVisualAnalysis(inspection,analysis),inspection);
+});
+
+test("a new staged capture reopens a reviewed item and preserves its prior decision and evidence", () => {
+  const {inspection,analysis,evidence,item}=fixture();
+  const state=applyVisualAnalysis(inspection,analysis);
+  state.items=state.items.map(entry=>({...entry,status:"conforme",reviewedAt:"2026-10-23T15:01:00.000Z"}));
+  state.items[0].note="Trecho conferido manualmente.";
+  state.history.push({id:"human-review",itemId:item.id,analysisId:analysis.id,status:"conforme",at:"2026-10-23T15:01:00.000Z",action:"Análise confirmada pelo usuário",note:state.items[0].note});
+  const before=structuredClone(state);
+  assert.equal(getGuidedProgress(state,item.id).complete,true);
+  const capture={...evidence,id:"new-photo",name:"Novo enquadramento",createdAt:"2026-10-23T15:02:00.000Z"};
+  const result=registerCapturedEvidence(state,capture,capture.createdAt);
+  assert.equal(result.items[0].status,"pendente");
+  assert.equal(result.items[0].suggestion,undefined);
+  assert.equal(result.items[0].reviewedAt,undefined);
+  assert.equal(result.items[0].note,"Trecho conferido manualmente.");
+  assert.deepEqual(result.items.slice(1),state.items.slice(1));
+  assert.deepEqual(result.evidence,[...state.evidence,capture]);
+  assert.deepEqual(result.analyses,state.analyses);
+  assert.deepEqual(result.baselines,state.baselines);
+  assert.deepEqual(result.history.slice(0,-1),state.history);
+  assert.equal(result.history.at(-1)?.action,"Revisão reaberta por nova foto");
+  assert.equal(result.history.at(-1)?.status,"pendente");
+  assert.match(result.history.at(-1)?.note??"",/Revisão anterior: Conforme.*Novo enquadramento/);
+  assert.equal(getGuidedProgress(result,item.id).complete,false);
+  assert.equal(getGuidedProgress(result,item.id).remaining,1);
+  assert.deepEqual(state,before);
+});
+
+test("retry replaces the failed capture and does not duplicate an already reopened review", () => {
+  const {inspection,evidence}=fixture();
+  inspection.items[0].status="divergencia";
+  inspection.items[0].reviewedAt="2026-10-23T15:01:00.000Z";
+  const first=registerCapturedEvidence(inspection,evidence,"2026-10-23T15:02:00.000Z");
+  first.evidence[0]={...first.evidence[0],analysisState:"error",analysisError:"Rede indisponível."};
+  const retry={...first.evidence[0],analysisState:"pending" as const,analysisError:undefined};
+  const retried=registerCapturedEvidence(first,retry,"2026-10-23T15:03:00.000Z");
+  assert.equal(retried.evidence.length,1);
+  assert.equal(retried.evidence[0].dataUrl,evidence.dataUrl);
+  assert.equal(retried.evidence[0].createdAt,evidence.createdAt);
+  assert.equal(retried.evidence[0].analysisState,"pending");
+  assert.equal(retried.evidence[0].analysisError,undefined);
+  assert.deepEqual(retried.history,first.history);
+  assert.equal(retried.history.filter(event=>event.action==="Revisão reaberta por nova foto").length,1);
+  assert.match(retried.history.at(-1)?.note??"",/Revisão anterior: Divergência/);
+  assert.equal(retried.items[0].status,"pendente");
+});
+
+test("staging a capture clears an old pending suggestion but never invents a prior human review", () => {
+  const {inspection,evidence,analysis}=fixture();
+  const state=applyVisualAnalysis(inspection,analysis);
+  const result=registerCapturedEvidence(state,{...evidence,id:"next-photo"});
+  assert.equal(result.items[0].status,"pendente");
+  assert.equal(result.items[0].suggestion,undefined);
+  assert.deepEqual(result.history,state.history);
+  assert.deepEqual(result.analyses,state.analyses);
+});
+
+test("a new inconclusive comparison after recapture cannot restore the earlier approved status", () => {
+  const {inspection,evidence,analysis}=fixture();
+  const state=applyVisualAnalysis(inspection,analysis);
+  state.items[0].status="conforme";
+  state.items[0].reviewedAt="2026-10-23T15:01:00.000Z";
+  const capture={...evidence,id:"new-photo"};
+  const reopened=registerCapturedEvidence(state,capture);
+  const result=applyVisualAnalysis(reopened,{...analysis,id:"new-analysis",evidenceId:capture.id,result:{...analysis.result,status:"inconclusivo",needsPhoto:true}});
+  assert.equal(result.items[0].status,"pendente");
+  assert.equal(result.items[0].suggestion?.status,"inconclusivo");
+  assert.equal(result.items[0].reviewedAt,undefined);
+  assert.equal(result.analyses?.length,2);
+});
+
+test("capturing cannot replace another item's evidence or reopen an unknown item", () => {
+  const {inspection,evidence}=fixture();
+  assert.throws(()=>registerCapturedEvidence(inspection,{...evidence,itemId:inspection.items[1].id}),/foto não corresponde/);
+  assert.throws(()=>registerCapturedEvidence(inspection,{...evidence,id:"new-photo",itemId:"missing"}),/foto não corresponde/);
+  assert.equal(inspection.evidence[0],evidence);
 });

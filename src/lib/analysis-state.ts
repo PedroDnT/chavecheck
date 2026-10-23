@@ -1,4 +1,4 @@
-import type {Evidence,Inspection} from "./inspection";
+import {statusLabel,type Evidence,type Inspection} from "./inspection";
 import type {VisualAnalysis} from "./visual-analysis";
 
 export function analysisMatchesCurrentItem(inspection:Inspection,analysis:VisualAnalysis):boolean {
@@ -15,6 +15,24 @@ export function selectSupportingEvidence(inspection:Inspection,itemId:string,exc
       &&analysis.model!=="deterministic-reference-match"&&!analysis.references.some(reference=>reference.sha256===analysis.imageSha256)
       &&analysis.result.quality.usable&&analysis.result.findings.some(finding=>(finding.evidenceId??analysis.evidenceId)===photo.id&&finding.assessment!=="uncertain")))
     .sort((a,b)=>a.createdAt.localeCompare(b.createdAt)).slice(-2);
+}
+
+/** A person's new capture reopens their review; prior evidence and decisions remain in history. */
+export function registerCapturedEvidence(inspection:Inspection,evidence:Evidence,at=new Date().toISOString()):Inspection {
+  const item=inspection.items.find(entry=>entry.id===evidence.itemId);
+  const existing=inspection.evidence.find(entry=>entry.id===evidence.id);
+  if(!item||existing&&existing.itemId!==evidence.itemId)throw new Error("A foto não corresponde ao item da vistoria.");
+  const reopening=item.status!=="pendente";
+  return {
+    ...inspection,
+    evidence:existing?inspection.evidence.map(entry=>entry.id===evidence.id?evidence:entry):[...inspection.evidence,evidence],
+    items:inspection.items.map(entry=>entry.id===item.id
+      ?{...entry,status:"pendente",suggestion:undefined,reviewedAt:undefined}:entry),
+    history:reopening?[...inspection.history,{
+      id:crypto.randomUUID(),itemId:item.id,at,action:"Revisão reaberta por nova foto",status:"pendente",
+      note:`Revisão anterior: ${statusLabel[item.status]}. Nova comparação solicitada com a foto ${evidence.name}.`,
+    }]:inspection.history,
+  };
 }
 
 export function applyVisualAnalysis(inspection:Inspection,analysis:VisualAnalysis):Inspection {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   LiveAcknowledgements, LiveTranscriptBuffer, createLiveAnalysisAppendChunks,
-  extractLiveAcknowledgement, splitLiveText,
+  extractLiveAcknowledgement, splitLiveText, createLiveVoiceSummaryChunks, deliverLiveVoiceSummary,
 } from "../src/lib/live-events";
 
 const delta = (event_id: string, role: "user" | "assistant", text: string, start_ms: number, end_ms: number) => ({
@@ -177,6 +177,14 @@ test("progress preserves the next requirement without claiming a fresh analysis"
   assert.throws(() => createLiveAnalysisAppendChunks(JSON.stringify({ nextItem: "Canaleta" }), "progress"));
 });
 
+test("completed verification is announced without inventing a next item or discarding pending outcomes", () => {
+  const completion = { reviewedItem: "Mobiliário", verificationComplete: true, action: "Concluir e ver relatório. Preserve divergências e inconclusivos." };
+  const chunks = createLiveAnalysisAppendChunks(JSON.stringify(completion), "progress");
+  assert.deepEqual(recordedPayload(chunks), { kind: "progress", ...completion });
+  assert.ok(chunks.every(chunk => Buffer.byteLength(chunk, "utf8") <= 500));
+  assert.throws(() => createLiveAnalysisAppendChunks(JSON.stringify({ reviewedItem: "Mobiliário", verificationComplete: "true", action: "Concluir" }), "progress"));
+});
+
 test("Live ACK extraction correlates only append confirmation or errors, never transcripts", () => {
   assert.deepEqual(extractLiveAcknowledgement({ type: "session.thinking.appended", client_event_id: "send-1" }), {
     clientEventId: "send-1", type: "session.thinking.appended", accepted: true,
@@ -213,4 +221,57 @@ test("disconnect clears every Live ACK wait, preventing stale analysis narration
   assert.deepEqual(await Promise.all([first, second]), [false, false]);
   assert.equal(pending.size, 0);
   assert.equal(pending.accept({ type: "session.thinking.appended", client_event_id: "first" }), false);
+});
+
+
+test("voice summary preserves verdict, capture IDs, next action and all explicit limits while omitting report details", () => {
+  const input = analysisInput();
+  input.result.justification = "Explicação completa para consulta no relatório. ".repeat(20);
+  const text = JSON.stringify(input);
+  const chunks = createLiveVoiceSummaryChunks(text);
+  const voice = recordedPayload(chunks);
+  assert.equal(voice.id, input.id);
+  assert.equal(voice.itemId, input.itemId);
+  assert.equal(voice.evidenceId, input.evidenceId);
+  assert.deepEqual(voice.supportingEvidenceIds, input.supportingEvidenceIds);
+  for (const key of ["status", "summary", "nextAction", "needsPhoto", "unverified"] as const) assert.deepEqual(voice[key], input.result[key]);
+  assert.deepEqual(voice.quality, { usable: true, viewMatch: "partial", reason: "Vista parcial" });
+  assert.deepEqual(voice.references, [{ evidenceId: "previous", referenceId: "foto-002", referenceObservationId: "obs-2" }]);
+  assert.deepEqual(voice.summaryScope.upstream, input.summaryScope);
+  assert.match(voice.summaryScope.note, /Ausência neste resumo não prova bom estado/);
+  assert.ok(chunks.length < createLiveAnalysisAppendChunks(text).length);
+  assert.ok(chunks.every(chunk => Buffer.byteLength(chunk, "utf8") <= 500));
+  input.result.needsPhoto = false;
+  input.result.nextAction = "Revise o resultado na interface.";
+  assert.equal(recordedPayload(createLiveVoiceSummaryChunks(JSON.stringify(input))).needsPhoto, false);
+});
+
+test("voice update sends every ordered fragment immediately and waits for all acknowledgements concurrently", async () => {
+  const sent: string[] = [];
+  const resolvers: ((accepted: boolean) => void)[] = [];
+  const delivery = deliverLiveVoiceSummary(["first", "second", "third"], chunk => {
+    sent.push(chunk);
+    return new Promise(resolve => resolvers.push(resolve));
+  }, () => true);
+  assert.deepEqual(sent, ["first", "second", "third"], "Sending the next fragment must not wait for a round trip");
+  let completed = false;
+  void delivery.then(() => { completed = true; });
+  resolvers[2](true); resolvers[0](true);
+  await Promise.resolve();
+  assert.equal(completed, false, "Never announce partially received context");
+  resolvers[1](true);
+  assert.equal(await delivery, true);
+});
+
+test("voice delivery rejects failed or superseded records while leaving unrelated conversation available", async () => {
+  let current = true;
+  let resolve!: (accepted: boolean) => void;
+  const delivery = deliverLiveVoiceSummary(["record"], () => new Promise(accept => { resolve = accept; }), () => current);
+  current = false;
+  resolve(true);
+  assert.equal(await delivery, false, "A new capture or item supersedes an old accepted update");
+  assert.equal(await deliverLiveVoiceSummary(["a", "b"], async chunk => chunk === "a", () => true), false);
+  let sent = false;
+  assert.equal(await deliverLiveVoiceSummary(["old"], async () => { sent = true; return true; }, () => false), false);
+  assert.equal(sent, false);
 });

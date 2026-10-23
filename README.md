@@ -12,6 +12,7 @@ Esta prova de conceito em Next.js, React e TypeScript demonstra o fluxo de **par
 | --- | --- |
 | [Visão do projeto](docs/VISAO-DO-PROJETO.md) | Problema, concepção, jornada completa, arquitetura, estado atual, relatório desejado e plano de evolução |
 | [Cenários de uso](docs/CENARIOS.md) | Exemplo disponível, capacidades já presentes e cenários planejados, com evidências e critérios de aceite |
+| [Contrato de teste em PDF](assets/sample-documents/contrato_aluguel_comercial_mock.pdf) | Documento fictício fornecido para a avaliação; original preservado e instruções em [Documentos de exemplo](assets/sample-documents/README.md) |
 | [Validação](docs/VALIDACAO.md) | Testes executados, controles reais e simulados e limites conhecidos |
 | [Especificação original](docs/especificacao-original.md) | Registro da concepção de Vistoria Viva; não representa integralmente a implementação atual |
 
@@ -40,6 +41,8 @@ npm start
 ```
 
 ## Experimentar
+
+Para testar o upload, baixe o [contrato fictício de locação comercial](assets/sample-documents/contrato_aluguel_comercial_mock.pdf). O arquivo contém dez itens e duas fotografias de referência; a extração real ainda é uma evolução planejada, e o fluxo atual continua usando os dois itens do cenário fixo.
 
 1. Para começar sem documento, clique em **Testar parede e canaleta**. O atalho abre o cenário simples com duas verificações: acabamento de cimento queimado da parede e tampa, continuidade e fios aparentes na canaleta inferior. As referências anteriores são `foto-001.jpeg` e `foto-002.jpeg`.
 2. **Enviar PDF da vistoria** continua disponível para PDFs válidos de até 25 MiB. O original é preservado no navegador com sua assinatura SHA-256 e pode ser baixado em **Ver documento**; a animação de scanner dura cinco segundos. O mapeamento ainda é simulado e usa o mesmo cenário de dois itens. Todos começam como **Não verificado**, sem evidências atuais ou revisões. Cada cômodo tem **Começar**, **Continuar** ou **Revisar**; continuar abre o primeiro item pendente. A sessão salva é recuperada ao reabrir o app. O cenário de demonstração antigo conhecido é arquivado antes da substituição pelo cenário simples, preservando seus registros; outras vistorias não são migradas automaticamente. Um novo envio também preserva uma cópia da sessão anterior.

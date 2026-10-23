@@ -57,6 +57,8 @@ Os outros itens legados são pintura da sala e abertura da janela. Eles ajudam a
 
 **Situação:** evolução planejada. O upload e a preservação do PDF original já existem; a extração real de seu conteúdo ainda não. Atualmente qualquer PDF válido segue um mapeamento simulado para parede e canaleta.
 
+**Documento de exemplo disponível:** [contrato fictício de locação comercial](../assets/sample-documents/contrato_aluguel_comercial_mock.pdf), fornecido para o projeto, com dez itens físicos e duas fotos de referência. O original está preservado; [as instruções de uso](../assets/sample-documents/README.md) distinguem o teste de upload atual da extração futura.
+
 - **Fonte e entrada:** contrato, termo ou laudo fictício em PDF com texto digital; páginas contendo cômodos, itens, condições, quantidades, valores ou prazos.
 - **Condução:** preservar o original, extrair conteúdo e fontes, sugerir checklist e mostrar a revisão antes da inspeção. Separar obrigação prevista de registro de entrega.
 - **Saída e evidência:** itens editáveis associados a documento, página e trecho; campos ausentes como “Não informado”; versão da extração e original recuperável.

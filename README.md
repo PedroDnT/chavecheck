@@ -1,6 +1,23 @@
 # ChaveCheck
 
-Prova de conceito do projeto **Vistoria Viva**, feita com Next.js, React e TypeScript. Recebe até dez verificações e conduz uma vistoria por conversa, voz e fotos manuais, com revisão humana e relatório.
+**Uma assistente que conduz a vistoria e organiza as evidências, da condição esperada ao relatório.**
+
+O ChaveCheck nasceu como **Vistoria Viva**. A visão completa é receber um PDF de vistoria, contrato ou termo de entrega, extrair um checklist por cômodo, conduzir a conferência por voz e fotos e gerar um relatório com imagens anteriores e atuais, comparativos, justificativas e revisão humana.
+
+Esta prova de conceito em Next.js, React e TypeScript demonstra o fluxo de **parede com cimento queimado e canaleta**. Câmera, conversa por voz, análise das fotos, revisão e relatório estão implementados. O PDF é recebido e preservado, mas a geração do checklist a partir de seu conteúdo **ainda é simulada** com esse cenário fixo.
+
+## Para quem vai avaliar o projeto
+
+| Documento | O que encontrar |
+| --- | --- |
+| [Visão do projeto](docs/VISAO-DO-PROJETO.md) | Problema, concepção, jornada completa, arquitetura, estado atual, relatório desejado e plano de evolução |
+| [Cenários de uso](docs/CENARIOS.md) | Exemplo disponível, capacidades já presentes e cenários planejados, com evidências e critérios de aceite |
+| [Validação](docs/VALIDACAO.md) | Testes executados, controles reais e simulados e limites conhecidos |
+| [Especificação original](docs/especificacao-original.md) | Registro da concepção de Vistoria Viva; não representa integralmente a implementação atual |
+
+**Percurso da demonstração:** Testar parede e canaleta → habilitar câmera e voz → fotografar → conferir análise e evidências → confirmar cada item → relatório com imagens e comparativos.
+
+A conversa continua disponível enquanto a foto é analisada. A captura é manual, e a sugestão da IA depende da revisão da pessoa. O relatório mantém divergências, inconclusivos e pendências. A visão mais ampla inclui extração real de documentos, importação de referências e múltiplos cômodos; o plano e os critérios para essas etapas estão na documentação acima.
 
 ## Executar
 
@@ -54,7 +71,7 @@ As duas imagens originais ficam em `assets/reference-room/` e são servidas por 
 
 ## O que esta versão entrega
 
-- Entrada textual estruturada por IA, com edição e fonte.
+- API de extração textual estruturada por IA, com edição e fonte no fluxo legado, fora da navegação principal atual.
 - GPT-Live via WebRTC com áudio bidirecional, voz Bossa e transcrição em português.
 - Chat por texto e análise visual estruturada via Responses, também disponíveis sem áudio.
 - Câmera traseira preferencial, troca de câmera e tratamento de permissões.
@@ -135,4 +152,4 @@ A troca de modelo não reescreve análises antigas. Novos inventários são sepa
 
 ## Organização da equipe
 
-O repositório foi iniciado para o Hackathon OpenAI São Paulo com as frentes `feat/contract-core` (contrato, entregas, comparação e revisões) e `feat/photo-verification` (fotos e verificação visual). Esta versão acrescenta a POC funcional à branch `main`.
+O projeto foi desenvolvido para o Hackathon OpenAI São Paulo, com frentes de contrato e conferência de entregas, verificação por fotos, conversa por voz e experiência de vistoria. A [visão do projeto](docs/VISAO-DO-PROJETO.md) reúne as decisões de produto e a evolução proposta para contextualizar a avaliação.

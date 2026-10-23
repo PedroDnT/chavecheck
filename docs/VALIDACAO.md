@@ -1,5 +1,7 @@
 # Validação da prova de conceito
 
+Este documento é um histórico de ensaios, organizado da atualização mais recente para as anteriores. Menções a outros modelos, quatro itens ou quadros periódicos nas seções antigas descrevem versões anteriores. Consulte a [visão do projeto](VISAO-DO-PROJETO.md) para a matriz de capacidades atuais e planejadas.
+
 ## Cache de referências na Vercel — 23/10/2026
 
 Com `VERCEL=1`, o inventário é gravado em `chavecheck/visual-baselines/` no diretório temporário do sistema, sem tentar escrever no diretório da aplicação. A execução local mantém `.data/visual-baselines/`; `cacheDir` explícito e a opção de desabilitar o disco com `null` continuam prevalecendo. O cache em memória permanece ativo.

@@ -1,6 +1,90 @@
 # Validação da prova de conceito
 
-Data: 23/10/2026. Ambiente local, Next.js 16.4.0, Chrome automatizado e dados fictícios. Os resultados estão separados entre a atualização do cenário com fotos e a validação inicial da POC. Os testes de mídia usaram câmera sintética e microfone silencioso; não representam uma vistoria de imóvel real.
+## GPT-6 Luna nas análises e no texto — 23/10/2026
+
+A configuração ativa passou a usar `gpt-6-luna` no inventário das fotos de referência, na comparação visual, no chat, na extração textual do roteiro e no backend de ferramentas da voz. `gpt-live-1` continua responsável pelo áudio. Defaults, `.env.example` e os overrides locais foram atualizados. Não havia GPT-5.5 ativo.
+
+A comparação e o inventário preservam esforço `medium`. Chat, extração e backend Live usam `none`, preservando o esforço efetivo anterior do GPT-5.4 mini e o orçamento de respostas curtas. As capacidades foram conferidas na [documentação do GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna) e na [configuração do backend Live](https://developers.openai.com/api/docs/guides/live-delegation#responses-delegation).
+
+Validação concluída:
+
+- 135 testes aprovados, incluindo modelo/raciocínio nas rotas de chat, extração, Live, inventário e comparação; TypeScript e compilação de produção aprovados.
+- Chamada real de inventário da `foto-002`: retornou cinco observações, JSON validado e modelo registrado `gpt-6-luna`.
+- Extração real de um roteiro de controle: separou parede e tomadas, preservando quatro tomadas previstas e três entregues; valores ausentes continuaram nulos.
+- Chat real respondeu com uma orientação de captura, sem inventar uma análise atual.
+- Sessão WebRTC real manteve GPT-Live na voz. Os eventos do backend confirmaram `gpt-6-luna`, quatro respostas concluídas e consulta ao contexto da vistoria, sem erro de API. Entrada de áudio silenciosa e sintética.
+- Next.js sem erros de configuração, execução ou compilação.
+
+Análises antigas mantêm o modelo original. O cache existente já separa inventários por modelo, hash e versão; novos inventários Luna não substituem os registros GPT-5.4. Sessões de voz já abertas precisam ser reiniciadas. Os testes confirmam integração e contratos de saída; não medem a acurácia do Luna em defeitos reais nem substituem a validação presencial. Os ensaios abaixo preservam os modelos usados na ocasião.
+
+
+## Migração para GPT-Live-1 — 23/10/2026
+
+A interface de voz passou a usar `/api/live` com `gpt-live-1` e voz `bossa`. A rota anterior permanece disponível para compatibilidade. O chat e o backend de ferramentas mantêm GPT-5.4 mini; a comparação visual registrada mantém GPT-5.4. A implementação segue o protocolo Live, incluindo criação JSON com transporte WebRTC, espera de `session.started`, transcrições contínuas, eventos Responses delegados e fechamento confirmado.
+
+Verificado nesta atualização:
+
+- 135 testes automatizados aprovados; TypeScript e compilação de produção aprovados.
+- Next.js sem erros de compilação, configuração ou execução no encerramento do teste.
+- `/api/health`, tanto local quanto pelo ngrok configurado, retornou `gpt-live-1` e configuração presente, sem expor credencial.
+- Conexão real OpenAI confirmou `gpt-live-1` e voz Bossa. A entrada de microfone foi silenciosa e sintética; a saída real teve áudio remoto e transcrição em português.
+- O backend consultou `get_inspection_context` antes de orientar a captura. A troca de paredes para canaleta foi acompanhada por nova consulta e orientação do item selecionado, sem aprovação automática.
+- Uma referência original reenviada como foto atual acionou a proteção já existente: resultado inconclusivo, exigindo uma nova captura. A voz relatou esse mesmo resultado e a próxima ação após receber os cinco fragmentos do registro; todos foram confirmados individualmente antes da solicitação de narração. Os dez appends dessa sessão, incluindo controle de roteiro e saudação, receberam seus respectivos ACKs; o maior teve 500 bytes.
+- Uma mensagem digitada chegou ao backend e produziu orientação de aproximação da canaleta. Essa rodada não comprovou a chamada de `request_photo_capture`; a chamada efetivamente observada foi `get_inspection_context`.
+- Ao voltar para a lista de cômodos, a voz foi silenciada e `session.closed` foi recebido antes do fechamento local do canal. A árvore React confirmou a saída de `InspectionApp` para `InspectionRooms`.
+- Registro sanitizado do controle: `output/playwright/gpt-live-protocol.json`. Não contém chave, SDP, áudio ou imagens.
+
+O teste inicial identificou uma saudação que confundia condição esperada com análise concluída. O contexto agora informa explicitamente a ausência de análise, e a orientação inicial depende da consulta ao backend. A repetição do controle não reproduziu essa afirmação. Também foram corrigidos o envio concorrente de comandos, continuações que reutilizam a mesma delegação, a correlação de respostas atrasadas com a revisão original, mensagens digitadas durante uma atualização e o encerramento ao sair do cômodo. Os controles não demonstram ausência absoluta de erros do modelo.
+
+As confirmações de protocolo comprovam recebimento de contexto, não reprodução integral da fala. O teste presencial com fala humana, interrupções, câmera e alto-falante do celular continua separado; não foi usado áudio privado do usuário nesta validação.
+
+
+Data: 23/10/2026. Ambiente local, Next.js 16.4.0, Chrome automatizado e dados fictícios. Os resultados estão separados por atualização. Os testes de mídia anteriores usaram câmera sintética e microfone silencioso; não representam uma vistoria de imóvel real.
+
+## Atualização: captura imediata e comparação rastreável
+
+O botão **Fotografar e analisar** substitui o fluxo separado de analisar e salvar. A captura é preservada antes da chamada de análise, fica vinculada ao item e pode ser reenviada após falha. **Orientação ao vivo** usa quadros temporários para conduzir o enquadramento; eles não produzem conclusões registradas.
+
+As fotos anteriores passam a ter inventário próprio com regiões, marcas visíveis, acabamento, objetos, aparência de luz/cor, nitidez e limitações. O registro da comparação inclui requisito e fonte, referência e observação utilizadas, região da captura atual, estado anterior, estado observado, justificativa e próxima ação. O registro completo, os hashes, o modelo e a versão são preservados. Essas ligações tornam a decisão auditável, mas não demonstram por si mesmas precisão de detecção.
+
+Verificações concluídas nesta atualização:
+
+- **87 testes automatizados passaram**, incluindo decisões vinculadas à captura, fonte alterada, preservação da revisão humana, referências inválidas, qualidade insuficiente, pendências funcionais, recuperação de interrupção, comparação cumulativa e limites do contexto de voz.
+- Compilação de produção e TypeScript aprovados; diagnóstico final do Next.js sem erros de configuração, execução ou compilação.
+- Inventários reais das duas referências gerados e guardados. A partir da versão 2, o inventário passou a registrar a pequena marca clara no móvel da foto 001 e evita importar objetos mencionados no texto do prompt que não estejam naquela imagem.
+- Captura sintética de 1920 × 1080 pelo botão: foto preservada antes do envio, cancelamento com opção de reanálise e reenvio da mesma evidência, sem criar outra foto. Resultado inconclusivo porque a parede não estava visível; nenhum item aprovado automaticamente.
+- WebRTC real com microfone sintético silencioso: a conversa recebeu o resultado registrado, confirmou o recebimento antes da solicitação de resposta e concluiu a orientação falada. A captura limpou o áudio anterior. Confirmar a revisão inconclusiva avançou para a canaleta e manteve os demais itens pendentes.
+- Nome editado no upload preservado. Quatro fotos, quatro análises, dois inventários atuais e uma revisão humana vinculada à análise foram restaurados após recarregar a sessão isolada.
+- Relatório exibe revisões vinculadas, análises anteriores, fonte e evidências. Versões antigas do inventário permanecem no retrato de cada análise; a lista atual mostra uma versão por referência.
+- Tela e relatório a 390 px sem transbordamento horizontal. Axe no relatório expandido: zero violações e zero verificações incompletas. Na tela de câmera: zero violações, duas verificações manuais pendentes (contraste sobre vídeo e legenda de vídeo); prévia da câmera é sem áudio.
+- Serviço de saúde acessível pelo endereço ngrok configurado. O navegador do usuário e suas evidências foram preservados; todos os controles ocorreram em sessão de QA separada.
+
+**Limite observado no primeiro controle visual:** o comparador com GPT-5.4-mini não reconheceu de forma consistente o mesmo trecho ao receber o mesmo arquivo da referência como imagem atual. Isso não foi contabilizado como acerto de visão. Foi acrescentada uma verificação determinística de SHA-256: a cópia exata de uma referência recebe a mensagem de que não existe captura nova, sem chamar o comparador nem inventar uma diferença. A interface mostra a referência que corresponde ao hash. Essa proteção não identifica cópias redimensionadas ou reencodificadas e não prova precisão visual em novas imagens. O modelo visual passou a ser GPT-5.4 com raciocínio médio, separado do modelo de texto.
+
+### Controle de correspondência e continuidade com GPT-5.4
+
+As imagens fornecidas foram exibidas em câmera virtual, em 1448 × 1086, e capturadas pelo botão real da interface. O caminho normal de captura gerou novos arquivos JPEG; não houve mudança simulada no cômodo.
+
+- A primeira captura, mostrando a vista da janela, produziu quatro achados sem mudança, vinculados à foto 002. A análise manteve a verificação inconclusiva e pediu a vista do ar-condicionado, ainda ausente. Essa rodada levou 74 segundos, incluindo a preparação de um inventário.
+- A captura seguinte mostrou a vista do ar-condicionado. A comparação v4 recebeu também a captura útil da janela, com identificador e hash próprios. Retornou em 52,6 segundos, com seis achados: dois ligados à captura atual/foto 001 e quatro ligados à captura anterior da vistoria/foto 002. Todos tinham regiões nas duas imagens.
+- A sugestão foi **Conforme nas áreas visíveis cobertas pelo conjunto**, sem pendências visuais e sem pedir novamente as duas vistas. O status confirmado do item permaneceu inconclusivo, como na revisão humana anterior; não houve aprovação automática.
+- A interface exibiu a foto e o horário corretos em cada achado, distinguindo **Referência anterior**, **Captura atual** e **Captura anterior desta vistoria**. Capturas com identificador desconhecido não são substituídas silenciosamente pela imagem atual.
+- Após recarregar, seis fotos, seis análises, dois inventários atuais e a revisão humana anterior foram restaurados; as duas fotos usadas na comparação conjunta continuaram disponíveis e vinculadas.
+- O conjunto usa até duas capturas anteriores úteis do mesmo item e requisito; apoios de outra fonte/condição, cópias exatas de referências, imagens inutilizáveis e IDs indevidos são rejeitados ou excluídos. Reanálises preservam os apoios do envio original.
+- A comparação expandida a 390 px permaneceu dentro da largura da tela. Capturas do controle: `output/playwright/comparacao-cumulativa-desktop.png` e `output/playwright/comparacao-cumulativa-mobile.png`.
+
+Esses controles confirmam correspondência neste par de imagens e continuidade entre capturas. Não são uma medida estatística de acurácia nem teste de mudança de luz ou dano real. O tempo de processamento varia; o envio imediato da foto não significa resultado instantâneo.
+
+Os controles foram de integração, conservação de evidência e comportamento diante de entrada insuficiente. Não foi medida a acurácia de identificação de danos, mudanças de luz ou correspondência entre novos ângulos do cômodo. Isso continua sendo objeto do teste presencial abaixo.
+
+Critérios para a validação presencial:
+
+1. Enquadrar um detalhe e tocar **Fotografar e analisar**: verificar envio imediato e foto preservada, sem esperar o intervalo da orientação ao vivo.
+2. Comparar a mesma região sob iluminação diferente: verificar se a justificativa separa luz, textura e mudança material; nenhuma porcentagem de certeza deve ser inventada.
+3. Fotografar com contraluz, desfoco ou região errada: receber orientação específica e resultado inconclusivo quando não houver suporte suficiente.
+4. Abrir **Ver imagens e fundamento da comparação**: conferir fonte, regiões e descrições diretamente nas imagens, inclusive marcas preexistentes.
+5. Cancelar ou interromper uma análise: manter a foto e conseguir reenviá-la sem perder o vínculo original.
+6. Confirmar uma revisão: mudar para o próximo item pendente, sem aprovação automática e sem conclusões novas atribuídas à voz.
 
 ## Cenário do cômodo com referências anteriores
 
@@ -10,9 +94,9 @@ As imagens são referências de um cenário fictício; não são capturas da vis
 
 Limites específicos: a textura do cimento queimado não é dano por si só; o furo circular da mesa é passagem para cabos; partes da canaleta e dos móveis estão ocultas; marcas já presentes devem ser comparadas; funcionamento e refrigeração do ar-condicionado exigem confirmação humana. A faixa escura junto à canaleta da foto 001, isoladamente, não determina integridade ou avaria.
 
-Para validar presencialmente, carregar o exemplo, mostrar cada item no cenário atual, solicitar aproximações da canaleta e de possíveis diferenças, revisar as sugestões e confirmar o salvamento das fotos. A aprovação final continua humana. A existência desta funcionalidade não comprova precisão de detecção de defeitos; o teste com o cômodo atual permanece pendente.
+Para validar presencialmente, carregar o exemplo, mostrar cada item no cenário atual, seguir as aproximações da canaleta e de possíveis diferenças, usar **Fotografar e analisar** e revisar as sugestões. A aprovação final continua humana. A existência desta funcionalidade não comprova precisão de detecção de defeitos; o teste com o cômodo atual permanece pendente.
 
-## Verificações da atualização com as duas fotos
+## Histórico: atualização inicial com as duas fotos
 
 - 37 testes automatizados passaram; TypeScript e compilação de produção aprovados.
 - Next.js sem erros de compilação ou execução ao final.
@@ -72,13 +156,13 @@ Os testes específicos de `tests/room-scenario.test.ts` verificam o estado inici
 
 - Microfone físico, fala humana bidirecional, alto-falante físico e câmera de celular real.
 - Safari/iOS, Android físico, interrupções de chamadas e redes móveis.
-- Publicação HTTPS, certificado no aparelho, armazenamento em nuvem e uso multiusuário.
+- Publicação de produção, certificado verificado no aparelho físico, armazenamento em nuvem e uso multiusuário.
 - Vistoria real ou desempenho de detecção de defeitos.
 - Comparação presencial do cenário atual com as duas referências do cômodo, incluindo diferenças reais e condições de iluminação distintas.
 
 Os arquivos em `output/playwright/` são capturas e relatório de teste, com evidência sintética identificada. Não são um laudo de imóvel.
 
-## Preparação para o repositório público
+## Histórico: preparação da publicação anterior para o repositório público
 
 Em 23/10/2026, a cópia desta versão foi verificada em diretório isolado, sem `.env.local`:
 
@@ -89,4 +173,4 @@ Em 23/10/2026, a cópia desta versão foi verificada em diretório isolado, sem 
 - A credencial local foi comparada com todos os arquivos selecionados e com os arquivos estáticos gerados para o navegador, sem correspondências.
 - Varredura Gitleaks sobre a cópia de publicação sem segredos detectados.
 
-Esta publicação corresponde ao fluxo descrito neste documento. As melhorias de envio imediato de foto e análise visual rastreável estavam em desenvolvimento separado e não fazem parte desta versão.
+Naquela publicação, as melhorias de envio imediato de foto e análise visual rastreável ainda estavam em desenvolvimento separado. As verificações acima pertencem à versão anterior; as atualizações posteriores estão registradas nas demais seções deste documento.

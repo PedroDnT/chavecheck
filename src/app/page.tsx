@@ -1,2 +1,2 @@
-import { InspectionApp } from "@/components/inspection-app";
-export default function Page() { return <InspectionApp />; }
+import { InspectionFlow } from "@/components/inspection-flow";
+export default function Page() { return <InspectionFlow />; }

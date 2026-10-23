@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ApiError, assertSameOrigin, errorResponse, noStoreHeaders, rateLimit, readJson } from "@/lib/server/guard";
-import { extractOutputText, openAIRequest, textModel } from "@/lib/server/openai";
+import { extractOutputText, openAIRequest, textModelOptions } from "@/lib/server/openai";
 import { extractionInstructions, extractionJsonSchema, extractionSchema } from "@/lib/server/extraction";
 
 export const runtime = "nodejs";
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     rateLimit(request, "parse", 10);
     const { input } = await readJson(request, schema, 100_000);
     const response = await openAIRequest("/responses", JSON.stringify({
-      model: textModel(),
+      ...textModelOptions(),
       store: false,
       instructions: extractionInstructions,
       input: [{ role: "user", content: input }],

@@ -4,15 +4,25 @@ export function realtimeModel() {
   return process.env.OPENAI_REALTIME_MODEL?.trim() || "gpt-realtime-2.1";
 }
 
+export function liveModel() {
+  return process.env.OPENAI_LIVE_MODEL?.trim() || "gpt-live-1";
+}
+
 export function textModel() {
-  return process.env.OPENAI_TEXT_MODEL?.trim() || "gpt-5.4-mini";
+  return process.env.OPENAI_TEXT_MODEL?.trim() || "gpt-6-luna";
+}
+
+export function textModelOptions() {
+  const model = textModel();
+  // Preserve the prior text model's effective effort and short voice-response budget.
+  return { model, ...(/^gpt-6-luna(?:-|$)/.test(model) ? { reasoning: { effort: "none" as const } } : {}) };
 }
 
 export function isConfigured() {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
 
-export async function openAIRequest(path: "/responses" | "/realtime/calls", body: BodyInit, json = true, signal?: AbortSignal) {
+export async function openAIRequest(path: "/responses" | "/realtime/calls" | "/live/sessions", body: BodyInit, json = true, signal?: AbortSignal, timeoutMs = 45_000) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new ApiError(503, "Configure a chave da OpenAI no servidor para usar a IA.");
   let response: Response;
@@ -21,7 +31,7 @@ export async function openAIRequest(path: "/responses" | "/realtime/calls", body
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, ...(json ? { "Content-Type": "application/json" } : {}) },
       body,
-      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(45_000)]) : AbortSignal.timeout(45_000),
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : AbortSignal.timeout(timeoutMs),
       cache: "no-store",
     });
   } catch {

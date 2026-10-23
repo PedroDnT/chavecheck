@@ -115,13 +115,15 @@ test("local API safeguards", async (t) => {
 
 test("route contracts with mocked OpenAI, never live billing", async (t) => {
   const originalFetch = globalThis.fetch;
-  const saved = { key: process.env.OPENAI_API_KEY, origin: process.env.APP_ORIGIN, model: process.env.OPENAI_REALTIME_MODEL };
+  const saved = { key: process.env.OPENAI_API_KEY, origin: process.env.APP_ORIGIN, model: process.env.OPENAI_REALTIME_MODEL, liveModel: process.env.OPENAI_LIVE_MODEL, textModel: process.env.OPENAI_TEXT_MODEL };
   process.env.OPENAI_API_KEY = "test-key-never-real";
   delete process.env.APP_ORIGIN;
   delete process.env.OPENAI_REALTIME_MODEL;
+  delete process.env.OPENAI_LIVE_MODEL;
+  delete process.env.OPENAI_TEXT_MODEL;
   t.after(() => {
     globalThis.fetch = originalFetch;
-    for (const [key, value] of [["OPENAI_API_KEY", saved.key], ["APP_ORIGIN", saved.origin], ["OPENAI_REALTIME_MODEL", saved.model]] as const) {
+    for (const [key, value] of [["OPENAI_API_KEY", saved.key], ["APP_ORIGIN", saved.origin], ["OPENAI_REALTIME_MODEL", saved.model], ["OPENAI_LIVE_MODEL", saved.liveModel], ["OPENAI_TEXT_MODEL", saved.textModel]] as const) {
       if (value === undefined) delete process.env[key]; else process.env[key] = value;
     }
   });
@@ -129,7 +131,7 @@ test("route contracts with mocked OpenAI, never live billing", async (t) => {
   await t.test("health reveals only presence and model, never the key", async () => {
     globalThis.fetch = async () => { throw new Error("Health must not contact OpenAI"); };
     const response = await health();
-    assert.deepEqual(await response.json(), { configured: true, model: "gpt-realtime-2.1" });
+    assert.deepEqual(await response.json(), { configured: true, model: "gpt-live-1" });
   });
 
   await t.test("cross-origin requests fail before any provider call", async () => {
@@ -157,6 +159,8 @@ test("route contracts with mocked OpenAI, never live billing", async (t) => {
   await t.test("text and image fallback sends bounded history without persistent storage", async () => {
     globalThis.fetch = async (_url, init) => {
       const body = JSON.parse(String(init?.body));
+      assert.equal(body.model, "gpt-6-luna");
+      assert.deepEqual(body.reasoning, { effort: "none" });
       assert.equal(body.store, false);
       assert.equal(body.input[0].role, "assistant");
       assert.equal(body.input[1].content[1].type, "input_image");
@@ -236,6 +240,8 @@ test("route contracts with mocked OpenAI, never live billing", async (t) => {
   await t.test("extraction preserves unknown values and replaces model IDs", async () => {
     globalThis.fetch = async (_url, init) => {
       const body = JSON.parse(String(init?.body));
+      assert.equal(body.model, "gpt-6-luna");
+      assert.deepEqual(body.reasoning, { effort: "none" });
       assert.equal(body.text.format.strict, true);
       assert.equal(body.text.format.type, "json_schema");
       return aiResponse(JSON.stringify({ items: [item] }));

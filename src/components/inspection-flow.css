@@ -1,0 +1,63 @@
+.wf-flow { min-height: 100dvh; background: var(--bg); }
+.wf-flow-rooms > main { padding: 24px 24px 48px; }
+.wf-document-line > p > span { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.wf-flow-loading { min-height: 50dvh; display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 15px; color: var(--muted); }
+.wf-flow-error { display: flex; align-items: center; gap: 16px; width: min(760px, calc(100% - 40px)); margin: 20px auto; padding: 14px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--amber-soft); font-size: 14px; }
+.wf-flow-error p { flex: 1; }
+.wf-report-page { max-width: 1100px; margin: auto; padding: 20px 26px 60px; }
+.wf-report-back { border: 0; background: transparent; color: var(--muted); display: flex; align-items: center; gap: 8px; font-size: 14px; min-height: 44px; padding: 0; margin: 0 auto 8px; width: min(100%, 860px); }
+.wf-document-provenance { max-width: 760px; margin: 24px auto; font-size: 12px; line-height: 1.7; color: var(--muted); }
+.wf-document-provenance button { padding: 0; border: 0; background: none; font-size: inherit; color: var(--primary); text-decoration: underline; overflow-wrap: anywhere; }
+.wf-report-details { margin-top: 26px; border-top: 1px solid var(--line); }
+.wf-report-details > summary { cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 20px 0; font-size: 14px; font-weight: 600; color: var(--primary); }
+.wf-finalize-dialog p { font-size: 15px; line-height: 1.7; }
+.wf-finalize-dialog .dialog-actions { flex-wrap: wrap; }
+.wf-finalize-dialog .dialog-actions button { min-height: 44px; }
+.wf-embedded { background: var(--bg); }
+.wf-embedded .app-main { padding-top: 16px; }
+.wf-item-heading { margin-bottom: 22px; }
+.wf-item-heading > button { display: flex; align-items: center; gap: 7px; border: 0; background: none; color: var(--muted); font-size: 14px; padding: 0; min-height: 44px; }
+.wf-item-heading > div { display: flex; align-items: center; gap: 18px; justify-content: space-between; }
+.wf-item-heading h1 { font-size: 27px; font-weight: 650; letter-spacing: -.7px; margin-top: 6px; }
+.wf-item-heading p { color: var(--muted); font-size: 14px; margin-top: 7px; }
+.wf-embedded .capture-guide { background: var(--primary-soft); border-radius: 7px; }
+.wf-embedded .capture-guide p { font-size: 15px; color: var(--primary); font-weight: 500; line-height: 1.5; }
+.wf-camera-secondary, .wf-voice-shortcut { display: none; }
+.wf-embedded .app-footer { margin-top: 30px; }
+@media(max-width:640px) {
+  .wf-flow-rooms > main { padding: 24px 22px 36px; }
+  .wf-report-page { padding: 10px 20px 32px; }
+  .wf-report-back { margin-bottom: 8px; }
+  .wf-item-heading { margin-bottom: 16px; }
+  .wf-item-heading h1 { font-size: 24px; line-height: 1.2; }
+  .wf-item-heading p { font-size: 13px; }
+  .wf-item-heading > div > button { font-size: 12px; padding-inline: 8px; }
+  .wf-embedded .app-main { padding: 8px 20px 0; }
+  .wf-embedded .mobile-tabs.wf-camera-tabs { display: none; }
+  .wf-embedded .camera-panel { height: 285px; }
+  .wf-embedded .camera-empty { padding: 48px 16px 56px; }
+  .wf-embedded .camera-empty h2 { font-size: 21px; }
+  .wf-embedded .camera-empty p { font-size: 13px; }
+  .wf-embedded .camera-empty small { display: none; }
+  .wf-embedded .camera-toolbar { bottom: 12px; }
+  .wf-embedded .camera-toolbar .shutter { width: 38px; height: 38px; }
+  .wf-embedded .camera-tool { height: 30px; width: 30px; }
+  .wf-embedded .camera-off { left: 165px; }
+  .wf-embedded .capture-guide .eyebrow { display: none; }
+  .wf-embedded .capture-guide { padding: 12px 15px; }
+  .wf-embedded .vision-controls { flex-direction: column; align-items: stretch; gap: 10px; }
+  .wf-embedded .vision-controls > button { width: 100%; min-height: 48px; font-size: 15px; }
+  .wf-embedded .vision-controls .switch-label { justify-content: center; }
+  .wf-camera-secondary { display: flex; justify-content: center; width: 100%; margin: 3px 0; }
+  .wf-voice-shortcut { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; width: 100%; border: 1px solid var(--line); border-radius: 9px; background: var(--primary-soft); color: var(--primary); font-size: 14px; margin: 18px 0; }
+  .wf-embedded .camera-help { font-size: 11px; margin-top: 10px; }
+  .wf-embedded .active-check > p { font-size: 13px; }
+}
+@media print {
+  .wf-flow { background: white; }
+  .wf-report-page { max-width: none; padding: 0; }
+  .wf-report-details { border: 0; margin: 0; }
+  .wf-report-details > summary, .wf-finalize-dialog { display: none !important; }
+  .wf-report-details > .cc-report { display: block !important; }
+  .wf-document-provenance button { text-decoration: none; color: inherit; }
+}

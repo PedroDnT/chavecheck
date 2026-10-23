@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { assertSameOrigin, errorResponse, noStoreHeaders, rateLimit, readJson } from "@/lib/server/guard";
-import { extractOutputText, openAIRequest, textModel } from "@/lib/server/openai";
+import { extractOutputText, openAIRequest, textModelOptions } from "@/lib/server/openai";
 import { instructionsWithContext } from "@/lib/server/prompts";
 
 export const runtime = "nodejs";
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     }];
     if (image) content.push({ type: "input_image", image_url: image, detail: "auto" });
     const response = await openAIRequest("/responses", JSON.stringify({
-      model: textModel(),
+      ...textModelOptions(),
       store: false,
       instructions: instructionsWithContext(context),
       input: [

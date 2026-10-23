@@ -1,7 +1,66 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createConversationItemId, parseToolCall, updateTranscript } from "../src/lib/realtime-events";
-import { createReferenceConversationItems, serializeRealtimeEvent } from "../src/hooks/use-realtime";
+import { AcceptedAnalysisInputs, createAnalysisConversationItem, createReferenceConversationItems, serializeRealtimeEvent } from "../src/hooks/use-realtime";
+
+test("analysis delivery stays pending until its own ACK, never a previous frame's ACK", async () => {
+  const pending = new AcceptedAnalysisInputs();
+  let resumed = false;
+  const accepted = pending.wait("analysis-current").then((value) => { resumed = value; return value; });
+  assert.equal(pending.settle("previous-frame", true), false);
+  await Promise.resolve();
+  assert.equal(resumed, false);
+  assert.equal(pending.size, 1);
+  assert.equal(pending.settle("analysis-current", true), true);
+  assert.equal(await accepted, true);
+  assert.equal(pending.size, 0);
+  assert.equal(pending.settle("analysis-current", true), false);
+});
+
+test("rejected or unacknowledged analysis delivery fails rather than continuing on old context", async () => {
+  const pending = new AcceptedAnalysisInputs();
+  const rejected = pending.wait("rejected");
+  assert.equal(pending.settle("rejected", false), true);
+  assert.equal(await rejected, false);
+  const expired = pending.wait("no-ack", 5);
+  assert.equal(await expired, false);
+  assert.equal(pending.size, 0);
+  assert.equal(pending.settle("no-ack", true), false);
+});
+
+test("disconnect or replacement cancels every waiting analysis without leaving promises open", async () => {
+  const pending = new AcceptedAnalysisInputs();
+  const first = pending.wait("first");
+  const second = pending.wait("second");
+  assert.throws(() => pending.wait("first"));
+  pending.clear();
+  assert.deepEqual(await Promise.all([first, second]), [false, false]);
+  assert.equal(pending.size, 0);
+  assert.equal(pending.settle("first", true), false);
+  const next = pending.wait("next");
+  pending.settle("next", true);
+  assert.equal(await next, true);
+});
+
+test("recorded analysis preserves structured evidence as quoted context and rejects empty payloads", () => {
+  const payload = JSON.stringify({ itemId: "parede", evidenceId: "foto-atual", result: { status: "inconclusivo", reason: "Contraluz na emenda" } });
+  const item = createAnalysisConversationItem(payload);
+  assert.equal(item.id.length, 32);
+  assert.equal(item.content.length, 1);
+  assert.match(item.content[0].text, /^RESULTADO DA ANÁLISE REGISTRADA/);
+  assert.ok(item.content[0].text.endsWith(JSON.stringify(payload)));
+  assert.throws(() => createAnalysisConversationItem("   "));
+  assert.throws(() => createAnalysisConversationItem("a".repeat(24_001)));
+});
+
+test("moving to the next item is conversation progress and never a fabricated new analysis", () => {
+  const payload = JSON.stringify({ reviewedItem: "Parede", nextItem: "Canaleta", nextExpected: "Tampa íntegra" });
+  const item = createAnalysisConversationItem(payload, "progress");
+  assert.match(item.content[0].text, /^ATUALIZAÇÃO DO ROTEIRO APÓS REVISÃO/);
+  assert.match(item.content[0].text, /não representa uma nova foto nem uma nova análise/);
+  assert.doesNotMatch(item.content[0].text, /A captura atual foi salva/);
+  assert.ok(item.content[0].text.endsWith(JSON.stringify(payload)));
+});
 
 test("Realtime send respects negotiated bytes, including UTF-8 text and unlimited transports", () => {
   const event = { type: "conversation.item.create", text: "Ação 🔎" };

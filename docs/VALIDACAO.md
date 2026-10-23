@@ -2,6 +2,19 @@
 
 Este documento é um histórico de ensaios, organizado da atualização mais recente para as anteriores. Menções a outros modelos, quatro itens ou quadros periódicos nas seções antigas descrevem versões anteriores. Consulte a [visão do projeto](VISAO-DO-PROJETO.md) para a matriz de capacidades atuais e planejadas.
 
+## Entrada por PDF, loading e Começar — 23/10/2026
+
+A primeira tela oferece **Enviar PDF da vistoria**, inclusive ao reabrir uma sessão existente. Um PDF válido passa pelo scanner de cinco segundos e só então abre os cômodos com **Começar**. O atalho que iniciava diretamente a câmera foi removido. A sessão anterior pode ser retomada por **Continuar vistoria salva**; sessões finalizadas abrem o relatório nessa ação explícita.
+
+Validação desta alteração:
+
+- 165 testes automatizados, TypeScript e compilação de produção aprovados. Next.js sem erros de compilação, configuração ou execução no navegador local.
+- PDF fictício enviado pela interface: scanner observado em andamento, seguido da Sala com dois itens não verificados e **Começar**.
+- Recarga com sessão salva manteve a tela de envio; a retomada explícita recuperou o documento e o roteiro.
+- Um arquivo com extensão `.pdf` e conteúdo inválido exibiu erro sem iniciar o scanner nem substituir a sessão salva, que continuou acessível.
+
+O mapeamento do PDF permanece simulado; esta alteração corrige somente a ordem das telas. Não houve chamada à IA nem uso de câmera ou microfone nesses controles.
+
 ## Cache de referências na Vercel — 23/10/2026
 
 Com `VERCEL=1`, o inventário é gravado em `chavecheck/visual-baselines/` no diretório temporário do sistema, sem tentar escrever no diretório da aplicação. A execução local mantém `.data/visual-baselines/`; `cacheDir` explícito e a opção de desabilitar o disco com `null` continuam prevalecendo. O cache em memória permanece ativo.

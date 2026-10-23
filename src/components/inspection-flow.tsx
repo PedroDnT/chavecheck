@@ -54,7 +54,6 @@ export function InspectionFlow() {
       if (saved) {
         const restored = restoreInterruptedAnalyses(saved);
         setInspection(restored);
-        setView(getWorkflow(restored).finalizedAt ? "report" : "rooms");
       }
     }).catch(() => {
       if (active) setError("Não foi possível recuperar a sessão salva. Verifique se o armazenamento do navegador está disponível.");
@@ -122,20 +121,6 @@ export function InspectionFlow() {
   }
 
   const onInspectionChange = useCallback((next: Inspection) => {setInspection(next);}, []);
-
-  async function startQuickScenario(){
-    if(importInProgress.current)return;
-    importInProgress.current=true;setBusy(true);setError(null);
-    try{
-      if(latest.current)await archiveInspection(latest.current);
-      const scenario=createRoomScenario();
-      const next=updateWorkflow(scenario,{startedRooms:["Sala"],activeItemId:scenario.items[0].id});
-      await saveInspection(next);
-      if(!alive.current)return;
-      setInspection(next);setActiveItemId(next.items[0].id);setView("inspect");
-    }catch{setError("Não foi possível abrir o teste rápido. Sua vistoria anterior foi preservada.");}
-    finally{importInProgress.current=false;setBusy(false);}
-  }
 
   const leaveInspection = useCallback((next: Inspection) => {
     setInspection(restoreInterruptedAnalyses(next));
@@ -209,7 +194,7 @@ export function InspectionFlow() {
       onReport={inspection && view !== "scanner" && view !== "inspect" && !busy ? () => {setError(null); setView("report");} : undefined}/>
     {!ready ? <main className="wf-flow-loading" role="status"><LoaderCircle className="spin" size={24}/>Carregando sua vistoria…</main> : <>
       {view !== "upload" && error && <div className="wf-flow-error" role="alert"><p>{error}</p><button className="icon-button" onClick={() => setError(null)} aria-label="Fechar aviso"><X size={18}/></button></div>}
-      {view === "upload" && <main><DocumentUpload onQuickStart={()=>void startQuickScenario()} onFile={file => void importPdf(file)} busy={busy} error={error} onResume={inspection ? () => {setError(null); setView("rooms");} : undefined}/></main>}
+      {view === "upload" && <main><DocumentUpload onFile={file => void importPdf(file)} busy={busy} error={error} onResume={inspection ? () => {setError(null); setView(getWorkflow(inspection).finalizedAt ? "report" : "rooms");} : undefined}/></main>}
       {view === "scanner" && pending && <main><DocumentScanner fileName={getWorkflow(pending).document?.name ?? "vistoria.pdf"} elapsedMs={elapsedMs} durationMs={DOCUMENT_SCAN_DURATION_MS}/></main>}
       {view === "rooms" && inspection && <main aria-busy={busy}><InspectionRooms inspection={inspection} busy={busy} onStartRoom={(room, id) => void startRoom(room, id)} onDocument={workflow?.document ? () => void showDocument() : undefined} onReport={() => setView("report")} onNew={() => {setError(null); setView("upload");}}/></main>}
       {view === "inspect" && inspection && <InspectionApp key={inspection.id} initialInspection={inspection} initialItemId={activeItemId} onInspectionChange={onInspectionChange} onExit={leaveInspection} onComplete={completeInspection}/>}

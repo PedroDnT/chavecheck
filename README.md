@@ -16,7 +16,7 @@ Esta prova de conceito em Next.js, React e TypeScript demonstra o fluxo de **par
 | [Validação](docs/VALIDACAO.md) | Testes executados, controles reais e simulados e limites conhecidos |
 | [Especificação original](docs/especificacao-original.md) | Registro da concepção de Vistoria Viva; não representa integralmente a implementação atual |
 
-**Percurso da demonstração:** Testar parede e canaleta → habilitar câmera e voz → fotografar → conferir análise e evidências → confirmar cada item → relatório com imagens e comparativos.
+**Percurso da demonstração:** enviar PDF → acompanhar o scanner por cinco segundos → Começar na Sala → habilitar câmera e voz → fotografar → conferir análise e evidências → confirmar cada item → relatório com imagens e comparativos.
 
 A conversa continua disponível enquanto a foto é analisada. A captura é manual, e a sugestão da IA depende da revisão da pessoa. O relatório mantém divergências, inconclusivos e pendências. A visão mais ampla inclui extração real de documentos, importação de referências e múltiplos cômodos; o plano e os critérios para essas etapas estão na documentação acima.
 
@@ -44,8 +44,8 @@ npm start
 
 Para testar o upload, baixe o [contrato fictício de locação comercial](assets/sample-documents/contrato_aluguel_comercial_mock.pdf). O arquivo contém dez itens e duas fotografias de referência; a extração real ainda é uma evolução planejada, e o fluxo atual continua usando os dois itens do cenário fixo.
 
-1. Para começar sem documento, clique em **Testar parede e canaleta**. O atalho abre o cenário simples com duas verificações: acabamento de cimento queimado da parede e tampa, continuidade e fios aparentes na canaleta inferior. As referências anteriores são `foto-001.jpeg` e `foto-002.jpeg`.
-2. **Enviar PDF da vistoria** continua disponível para PDFs válidos de até 25 MiB. O original é preservado no navegador com sua assinatura SHA-256 e pode ser baixado em **Ver documento**; a animação de scanner dura cinco segundos. O mapeamento ainda é simulado e usa o mesmo cenário de dois itens. Todos começam como **Não verificado**, sem evidências atuais ou revisões. Cada cômodo tem **Começar**, **Continuar** ou **Revisar**; continuar abre o primeiro item pendente. A sessão salva é recuperada ao reabrir o app. O cenário de demonstração antigo conhecido é arquivado antes da substituição pelo cenário simples, preservando seus registros; outras vistorias não são migradas automaticamente. Um novo envio também preserva uma cópia da sessão anterior.
+1. A primeira tela apresenta **Enviar PDF da vistoria**. Selecione um PDF válido de até 25 MiB. O original é preservado no navegador com sua assinatura SHA-256 e pode ser baixado depois em **Ver documento**. Mesmo quando existe uma sessão salva, o app abre nesta tela; escolha **Continuar vistoria salva** para retomá-la. O cenário de demonstração antigo conhecido é arquivado antes da substituição pelo cenário simples, preservando seus registros; outras vistorias não são migradas automaticamente. Um novo envio também preserva uma cópia da sessão anterior.
+2. Depois do envio, a tela de carregamento mostra o scanner por cinco segundos e abre **Cômodos**. Toque em **Começar** na Sala para iniciar. O mapeamento ainda é simulado com duas verificações: acabamento de cimento queimado da parede e tampa, continuidade e fios aparentes na canaleta inferior. As referências anteriores são `foto-001.jpeg` e `foto-002.jpeg`. Os dois itens começam como **Não verificado**, sem evidências atuais ou revisões. Cada cômodo tem **Começar**, **Continuar** ou **Revisar**, conforme seu progresso; continuar abre o primeiro item pendente.
 3. Ao abrir um cômodo, toque em **Habilitar câmera e começar**. Depois da permissão de câmera, a voz inicia automaticamente e solicita acesso ao microfone. O mesmo gesto prepara a reprodução do áudio no celular. Se o navegador bloquear o som, use **Habilitar som da assistente**.
 4. A assistente orienta o enquadramento pelo roteiro e pelas referências. A prévia da câmera é local: não há análise contínua nem envio automático de quadros. Câmera e conversa ficam na mesma tela. Se o microfone estiver indisponível, continue por texto ou tente **Ativar voz da assistente**.
 5. **Fotografar e analisar** salva a captura e a envia imediatamente para comparação. A assistente avisa que recebeu a foto, e áudio, microfone e conversa continuam disponíveis enquanto a análise é feita. Ela recebe o resultado resumido assim que fica pronto. Para usar uma imagem do aparelho, toque em **Escolher foto do celular**, confira o item e toque em **Enviar e analisar**.
@@ -79,7 +79,7 @@ As duas imagens originais ficam em `assets/reference-room/` e são servidas por 
 - Chat por texto e análise visual estruturada via Responses, também disponíveis sem áudio.
 - Câmera traseira preferencial, troca de câmera e tratamento de permissões.
 - Captura imediata que salva o original antes de analisar, com cópia de transporte identificada e reenvio em caso de falha.
-- Atalho para um cenário de um cômodo com duas fotos anteriores e duas verificações visuais: parede e canaleta, separado das evidências atuais.
+- Entrada por PDF, scanner de cinco segundos e seleção do cômodo antes de começar o cenário com duas referências anteriores e duas verificações visuais: parede e canaleta.
 - Checklist por ambiente, sugestões revisáveis e comparação determinística.
 - Inventário das referências, comparação por regiões e fundamento ligado à fonte e à imagem atual.
 - Comparação acumulada com até duas capturas anteriores úteis do mesmo item, preservando qual foto sustenta cada achado.
@@ -89,7 +89,7 @@ As duas imagens originais ficam em `assets/reference-room/` e são servidas por 
 
 ## Limites intencionais da POC
 
-Esta versão prioriza **Testar parede e canaleta → conversa e câmera → revisão dos dois itens → relatório**. O caminho por PDF, scanner de cinco segundos e cômodos continua disponível. O upload preserva o PDF original, mas sua extração ainda é simulada com o cenário da Sala. A comparação visual usa as duas fotos anteriores do exemplo; ainda não inclui cadastro genérico de referências antigas, extração real de PDF, armazenamento em nuvem, autenticação ou gestão de múltiplas vistorias. Os componentes legados de preparação textual continuam no código, sem acesso no novo fluxo.
+Esta versão segue **Enviar PDF da vistoria → scanner de cinco segundos → Cômodos / Começar → conversa e câmera → revisão dos dois itens → relatório**. O upload preserva o PDF original, mas sua extração ainda é simulada com o cenário da Sala. A comparação visual usa as duas fotos anteriores do exemplo; ainda não inclui cadastro genérico de referências antigas, extração real de PDF, armazenamento em nuvem, autenticação ou gestão de múltiplas vistorias. Os componentes legados de preparação textual continuam no código, sem acesso no novo fluxo.
 
 Dados locais não se sincronizam entre navegadores, portas ou dispositivos. Limpar os dados do navegador apaga a sessão; exporte os registros para guardá-los. Falha de persistência é mostrada na tela. Texto, áudio, capturas enviadas para análise e referências usadas na comparação são enviados à OpenAI. As evidências atuais e suas análises ficam no navegador; os inventários das referências também ficam no servidor local. A aplicação não grava áudio nem vídeo contínuo.
 
@@ -105,7 +105,7 @@ Por padrão o servidor limita APIs a origens locais. `APP_ORIGIN` habilita uma o
 
 Use a URL HTTPS fornecida pelo seu túnel; `https://chavecheck-demo.ngrok-free.app` é apenas um exemplo fictício. O túnel deve apontar para `http://127.0.0.1:3100`. `APP_ORIGIN` em `.env.local` define a origem pública exata; `next.config.ts` usa o hostname dessa variável em `allowedDevOrigins`. O acesso local com a mesma origem continua funcionando. Outros domínios de túnel não são liberados por curinga.
 
-Se o ngrok mudar de endereço, atualize `APP_ORIGIN` e reinicie `npm run dev`. Abra o link HTTPS diretamente no navegador do celular e permita câmera e microfone. A sessão salva no endereço local é independente da sessão no domínio ngrok; um navegador novo mostra o atalho **Testar parede e canaleta** e a opção de enviar PDF.
+Se o ngrok mudar de endereço, atualize `APP_ORIGIN` e reinicie `npm run dev`. Abra o link HTTPS diretamente no navegador do celular e permita câmera e microfone. A sessão salva no endereço local é independente da sessão no domínio ngrok. O app sempre abre na tela **Enviar PDF da vistoria**; **Continuar vistoria salva** aparece quando há uma sessão disponível nessa origem e navegador.
 
 ## Integração
 

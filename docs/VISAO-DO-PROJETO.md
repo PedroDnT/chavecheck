@@ -90,7 +90,7 @@ Esta matriz descreve a versão local documentada em 23/10/2026. “Implementado�
 
 | Capacidade | Estado atual | Alcance e próxima evolução |
 | --- | --- | --- |
-| Receber e preservar PDF | Implementado | Valida arquivo de até 25 MiB, salva original no navegador e registra SHA-256 |
+| Receber e preservar PDF | Implementado | Primeira tela do app; valida arquivo de até 25 MiB, salva original no navegador e registra SHA-256. Scanner de cinco segundos antecede Cômodos / Começar |
 | Gerar checklist a partir do conteúdo do PDF | **Simulado** | O upload abre o exemplo fixo da sala; OCR, extração de páginas e identificação de fontes ainda precisam ser implementados |
 | Extrair itens de um texto | Implementado fora do fluxo principal | API estruturada com até dez itens e fonte textual; sua interface anterior não é a entrada atual |
 | Checklist guiado por cômodo | Implementado | Demonstração acessível com parede e canaleta; avanço depende de revisão |
@@ -99,10 +99,10 @@ Esta matriz descreve a versão local documentada em 23/10/2026. “Implementado�
 | Referências anteriores | Implementado para o exemplo | Duas imagens fornecidas com inventário e cache; importação genérica ainda planejada |
 | Comparação visual explicada | Implementado | Requisito, fonte, regiões, referência e captura vinculados; resultado insuficiente permanece inconclusivo |
 | Continuidade entre fotos | Implementado | Até duas capturas anteriores úteis do mesmo item podem complementar a nova comparação |
-| Comparação de quantidade, prazo e valor | Implementado no domínio | Cálculo determinístico e exemplo fictício preservados; não compõem o atalho atual de dois itens |
+| Comparação de quantidade, prazo e valor | Implementado no domínio | Cálculo determinístico e exemplo fictício preservados; não compõem o cenário atual de dois itens |
 | Revisão e histórico | Implementado | Sugestão separada da decisão, confirmação manual e reabertura após nova captura |
 | Relatório com fotos e comparativos | Implementado na POC | Visualização por cômodo, referências, análises, evidências, histórico, JSON e impressão para PDF |
-| Retomar dados | Implementado localmente | IndexedDB no mesmo navegador e origem; sessão anterior arquivada ao iniciar novo upload/atalho ou substituir o exemplo conhecido |
+| Retomar dados | Implementado localmente | IndexedDB no mesmo navegador e origem; a tela de envio oferece Continuar vistoria salva para retomada explícita. Sessão anterior arquivada ao iniciar novo upload ou substituir o exemplo conhecido |
 | Conta, nuvem e colaboração | Planejado | Autenticação, permissões, sincronização entre aparelhos e gestão de várias vistorias |
 | PDF final gerado como arquivo pelo servidor | Planejado | Hoje o PDF é produzido pela impressão do navegador; composição e paginação controladas serão uma evolução |
 
@@ -196,7 +196,7 @@ Em paralelo, a avaliação deve usar fotos de controle com e sem alterações, r
 
 ### Percurso curto na versão atual
 
-1. Abra **Testar parede e canaleta** e mostre que os dois itens começam não verificados.
+1. Abra o app e escolha **Enviar PDF da vistoria**. Após enviar um PDF válido, acompanhe o scanner por cinco segundos. Em **Cômodos**, mostre que os dois itens da Sala começam não verificados e toque em **Começar**. Se já houver uma sessão salva, sua retomada depende da escolha explícita de **Continuar vistoria salva** na tela inicial.
 2. Habilite a câmera. A voz inicia e orienta o enquadramento da parede.
 3. Capture uma foto. Observe a confirmação de recebimento e faça uma pergunta durante a análise.
 4. Confira o resultado e abra **Ver comparação e justificativas** para consultar suas evidências. Se faltar detalhe, envie a foto solicitada.
@@ -205,7 +205,7 @@ Em paralelo, a avaliação deve usar fotos de controle com e sem alterações, r
 
 As duas fotografias anteriores da demonstração são referências fictícias fornecidas para o projeto. O ensaio deve usar novas capturas para representar a inspeção atual. Se houver necessidade de encerrar sem evidência suficiente, a revisão manual permite manter o resultado inconclusivo.
 
-O caminho **Enviar PDF da vistoria** demonstra upload e preservação do documento. A animação de leitura e o checklist fixo devem ser apresentados como simulação dessa etapa; não como extração real do arquivo enviado.
+A entrada por **Enviar PDF da vistoria** demonstra upload e preservação do documento. A animação de leitura e o checklist fixo devem ser apresentados como simulação dessa etapa; não como extração real do arquivo enviado.
 
 ### Questões que a avaliação pode responder
 

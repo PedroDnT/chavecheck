@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -448,6 +448,63 @@ test("shared inventories survive one caller cancellation and are deduplicated", 
   assert.equal(calls, 1);
   record.observations[0].description = "Mutação externa";
   assert.equal((await service.reference("foto-001")).observations[0].description, inventory.observations[0].description);
+});
+
+test("default inventory storage writes to Vercel scratch space and preserves local and explicit storage", async (t) => {
+  const directory = await mkdtemp(path.join(tmpdir(), "chavecheck-storage-test-"));
+  const deployment = path.join(directory, "deployment");
+  const scratch = path.join(directory, "scratch");
+  const savedVercel = process.env.VERCEL;
+  const savedTmpdir = process.env.TMPDIR;
+  t.mock.method(process, "cwd", () => deployment);
+  process.env.TMPDIR = scratch;
+  t.after(async () => {
+    if (savedVercel === undefined) delete process.env.VERCEL; else process.env.VERCEL = savedVercel;
+    if (savedTmpdir === undefined) delete process.env.TMPDIR; else process.env.TMPDIR = savedTmpdir;
+    await rm(directory, { recursive: true, force: true });
+  });
+
+  for (const scenario of [
+    { name: "Vercel", vercel: "1", cacheDir: undefined, expected: path.join(scratch, "chavecheck", "visual-baselines") },
+    { name: "local", vercel: undefined, cacheDir: undefined, expected: path.join(deployment, ".data", "visual-baselines") },
+    { name: "explicit override", vercel: "1", cacheDir: path.join(directory, "override"), expected: path.join(directory, "override") },
+  ]) {
+    await t.test(scenario.name, async () => {
+      if (scenario.vercel === undefined) delete process.env.VERCEL; else process.env.VERCEL = scenario.vercel;
+      let calls = 0;
+      const options = {
+        cacheDir: scenario.cacheDir, model: () => "storage-test-model", readAsset: async () => Buffer.from(scenario.name),
+        provider: async () => { calls += 1; return inventory; },
+      };
+      const service = createVisualAnalysisService(options);
+      const first = await service.reference("foto-001");
+      const filenames = await readdir(scenario.expected);
+      assert.equal(filenames.length, 1, "The selected directory contains an atomic JSON inventory");
+      assert.match(filenames[0], /^[a-f0-9]{64}\.json$/);
+      assert.deepEqual(JSON.parse(await readFile(path.join(scenario.expected, filenames[0]), "utf8")), first);
+      assert.deepEqual(await createVisualAnalysisService(options).reference("foto-001"), first);
+      assert.equal(calls, 1, "A fresh service reuses the inventory from the selected disk cache");
+      if (scenario.name === "Vercel") {
+        await assert.rejects(readdir(deployment), { code: "ENOENT" }, "Vercel must not write into the deployment directory");
+      }
+      await rm(scenario.expected, { recursive: true });
+      assert.deepEqual(await service.reference("foto-001"), first);
+      assert.equal(calls, 1, "The existing service still reuses its in-memory inventory");
+    });
+  }
+
+  await t.test("disabled disk cache", async () => {
+    process.env.VERCEL = "1";
+    let calls = 0;
+    const service = createVisualAnalysisService({
+      cacheDir: null, model: () => "storage-test-model", readAsset: async () => Buffer.from("memory-only"),
+      provider: async () => { calls += 1; return inventory; },
+    });
+    const first = await service.reference("foto-001");
+    assert.deepEqual(await service.reference("foto-001"), first);
+    assert.equal(calls, 1);
+    await assert.rejects(readdir(path.join(scratch, "chavecheck", "visual-baselines")), { code: "ENOENT" });
+  });
 });
 
 test("disk inventory persists across service restarts and invalidates on model and original changes", async (t) => {

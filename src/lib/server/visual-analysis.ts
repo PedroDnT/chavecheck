@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { z } from "zod";
 import {
@@ -234,7 +235,12 @@ export function groundVisualResult(raw: unknown, references: ReferenceAnalysis[]
 export function createVisualAnalysisService(options: ServiceOptions = {}) {
   const getModel = options.model ?? visualModel;
   const invoke = options.provider ?? provider;
-  const cacheDir = options.cacheDir === undefined ? path.join(process.cwd(), ".data", "visual-baselines") : options.cacheDir;
+  // Vercel's deployment directory is read-only; its writable cache is ephemeral.
+  const cacheDir = options.cacheDir === undefined
+    ? process.env.VERCEL === "1"
+      ? path.join(tmpdir(), "chavecheck", "visual-baselines")
+      : path.join(process.cwd(), ".data", "visual-baselines")
+    : options.cacheDir;
   const assets = options.readAsset ?? (async (id: ReferenceId) => {
     // This function accepts only an enum; paths from requests never reach readFile.
     const file = referenceIdSchema.parse(id) === "foto-001" ? "foto-001.jpeg" : "foto-002.jpeg";

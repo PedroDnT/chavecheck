@@ -1,5 +1,13 @@
 # Validação da prova de conceito
 
+## Cache de referências na Vercel — 23/10/2026
+
+Com `VERCEL=1`, o inventário é gravado em `chavecheck/visual-baselines/` no diretório temporário do sistema, sem tentar escrever no diretório da aplicação. A execução local mantém `.data/visual-baselines/`; `cacheDir` explícito e a opção de desabilitar o disco com `null` continuam prevalecendo. O cache em memória permanece ativo.
+
+Validação desta correção: 165 testes automatizados e TypeScript aprovados; Next.js sem erros de compilação, configuração ou execução no navegador local. O novo controle usa provedor simulado e escrita real em diretórios isolados: confirma o destino temporário na Vercel, o destino local, o override, o modo somente em memória e a reutilização do inventário por outra instância do serviço. Nenhuma chamada à IA foi realizada nesta verificação.
+
+O cache temporário pode desaparecer e não é compartilhado entre instâncias da Vercel; nesse caso, as referências serão analisadas novamente. Os inventários já vinculados às análises permanecem nos respectivos registros do navegador. Esta verificação local não comprova uma análise real na Vercel.
+
 ## Cenário rápido: parede e canaleta — 23/10/2026
 
 O atalho **Testar parede e canaleta** abre diretamente duas verificações: acabamento de cimento queimado e tampa/fios aparentes da canaleta. O exemplo anterior de quatro itens é arquivado antes da substituição. Fotos, análises e revisões do exemplo anterior continuam preservadas.
